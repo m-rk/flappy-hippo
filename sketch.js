@@ -30,7 +30,7 @@ function reset() {
   pipes = [];
   score = 0;
   gameOver = false;
-  pipes.push(new Pipe()); // Add an initial pipe
+  // pipes.push(new Pipe()); // Add an initial pipe
   ground1 = { x: 0 };
   ground2 = { x: width };
 }
@@ -147,10 +147,10 @@ class Bird {
     this.x = 100;              // Fixed x-position
     this.y = height / 2;       // Start in the middle
     this.width = 50;           // Width of the bird image
-    this.height = 50;          // Height of the bird image
+    this.height = 34;          // Height of the bird image
     this.velocity = 0;         // Vertical velocity
-    this.gravity = 0.5;        // Gravity pulling the bird down
-    this.jumpStrength = -10;   // Velocity boost when flapping
+    this.gravity = 0.4;        // Gravity pulling the bird down
+    this.jumpStrength = -6;   // Velocity boost when flapping
   }
 
   update() {
@@ -191,7 +191,7 @@ class Pipe {
   constructor() {
     this.x = width;                             // Start at the right edge
     this.width = 50;                            // Width of the pipe
-    this.gapSize = 100;                         // Size of the gap
+    this.gapSize = 120;                         // Size of the gap
     this.topHeight = random(50, height - groundHeight - this.gapSize - 50); // Random top pipe height
     this.passed = false;                        // Track if bird has passed this pipe
   }
@@ -202,7 +202,7 @@ class Pipe {
 
   draw() {
     // Draw top pipe
-    image(pipeTopImg, this.x, 0, this.width, this.topHeight);
+    image(pipeBottomImg, this.x, 0, this.width, this.topHeight);
     // Draw bottom pipe
     let bottomY = this.topHeight + this.gapSize;
     let bottomHeight = height - bottomY;
