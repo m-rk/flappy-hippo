@@ -7,11 +7,12 @@ let score = 0;
 let gameOver = false;
 let groundHeight = 50;
 let speed = 2;
+let gameStarted = false;
 
 // Load all images before the game starts
 function preload() {
   birdImg = loadImage('hippo.png');        // Hippo sprite (PNG with transparent background)
-  bgImg = loadImage('sky.jpg');            // Background sky image
+  bgImg = loadImage('sky.png');            // Background sky image
   pipeTopImg = loadImage('pipe_top.png');  // Top pipe image
   pipeBottomImg = loadImage('pipe_bottom.png'); // Bottom pipe image
   groundImg = loadImage('ground.png');     // Ground image (tileable horizontally)
@@ -19,9 +20,8 @@ function preload() {
 
 // Initialize the game
 function setup() {
-  createCanvas(400, 600);
+  createCanvas(windowWidth, windowHeight);
   imageMode(CORNER); // Set image mode to CORNER for consistent positioning
-  reset();           // Start with a fresh game state
 }
 
 // Reset the game state
@@ -40,7 +40,12 @@ function draw() {
   // Draw the background
   image(bgImg, 0, 0, width, height);
 
-  if (!gameOver) {
+  if (!gameStarted) {
+    textSize(32);
+    fill(255);
+    textAlign(CENTER);
+    text("Tap to Start", width / 2, height / 2);
+  } else if (!gameOver) {
     // Update and draw game elements when the game is active
     bird.update();
 
@@ -121,23 +126,32 @@ function draw() {
   }
 }
 
-// Handle mouse click for flapping or restarting
-function mousePressed() {
-  if (gameOver) {
+function click () {
+  if (!gameStarted) {
+    gameStarted = true;
+    reset(); // Start the game on first tap
+  } else if (gameOver) {
     reset();
   } else {
     bird.flap();
   }
 }
 
-// Handle space key for flapping or restarting
+// screen touch
+function touchStarted() {
+  click();
+  return false;
+}
+
+// mouse click
+function mousePressed() {
+  click();
+}
+
+// space key press
 function keyPressed() {
   if (key === ' ') {
-    if (gameOver) {
-      reset();
-    } else {
-      bird.flap();
-    }
+    click();
   }
 }
 
