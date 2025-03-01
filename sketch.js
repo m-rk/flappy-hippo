@@ -6,8 +6,9 @@ let ground1, ground2;
 let score = 0;
 let gameOver = false;
 let groundHeight = 50;
-let scrollSpeed = 2;
+let scrollSpeed = 10;
 let gameStarted = false;
+let scale = 1;
 
 // Load all images before the game starts
 function preload() {
@@ -21,6 +22,9 @@ function preload() {
 // Initialize the game
 function setup() {
   createCanvas(windowWidth, windowHeight);
+  // get max of window width and height
+  scale = min(width, height) / 200;
+  scrollSpeed *= scale / 6;
   imageMode(CORNER); // Set image mode to CORNER for consistent positioning
 }
 
@@ -41,7 +45,7 @@ function draw() {
   image(bgImg, 0, 0, width, height);
 
   if (!gameStarted) {
-    textSize(32);
+    textSize(20 * scale);
     fill(255);
     textAlign(CENTER);
     text("Tap to Start", width / 2, height / 2);
@@ -109,20 +113,20 @@ function draw() {
     bird.draw();
 
     // Display the score
-    textSize(32);
+    textSize(20 * scale);
     fill(255);
     textAlign(CENTER);
-    text(score, width / 2, 50);
+    text(score, width / 2, (50 * scale));
   } else {
     // Display game over screen
-    textSize(48);
+    textSize(25 * scale);
     fill(255, 0, 0);
     textAlign(CENTER);
-    text("Game Over", width / 2, height / 2 - 50);
-    textSize(32);
+    text("Game Over", width / 2, height / 2 - (50 * scale));
+    textSize(20 * scale);
     fill(255);
     text("Score: " + score, width / 2, height / 2);
-    text("Click to restart", width / 2, height / 2 + 50);
+    text("Click to restart", width / 2, height / 2 + (50 * scale));
   }
 }
 
@@ -158,13 +162,13 @@ function keyPressed() {
 // Bird class to manage the hippo sprite
 class Bird {
   constructor() {
-    this.x = 100;              // Fixed x-position
+    this.x = width / 3;        // Fixed x-position
     this.y = height / 2;       // Start in the middle
-    this.width = 50;           // Width of the bird image
-    this.height = 34;          // Height of the bird image
+    this.width = 50 * scale;   // Width of the bird image
+    this.height = 34 * scale;  // Height of the bird image
     this.velocity = 0;         // Vertical velocity
-    this.gravity = 0.4;        // Gravity pulling the bird down
-    this.jumpStrength = -6;   // Velocity boost when flapping
+    this.gravity = 0.4 * (scale / 2);        // Gravity pulling the bird down
+    this.jumpStrength = -6 * (scale / 2);    // Velocity boost when flapping
   }
 
   update() {
@@ -204,9 +208,9 @@ class Bird {
 class Pipe {
   constructor() {
     this.x = width;                             // Start at the right edge
-    this.width = 50;                            // Width of the pipe
-    this.gapSize = 120;                         // Size of the gap
-    this.topHeight = random(50, height - groundHeight - this.gapSize - 50); // Random top pipe height
+    this.width = 50 * scale;                    // Width of the pipe
+    this.gapSize = 120 * (scale);           // Size of the gap
+    this.topHeight = random(50 * (scale / 2), height - groundHeight - this.gapSize - (50 * (scale / 2))); // Random top pipe height
     this.passed = false;                        // Track if bird has passed this pipe
   }
 
