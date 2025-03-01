@@ -6,7 +6,7 @@ let ground1, ground2;
 let score = 0;
 let gameOver = false;
 let groundHeight = 50;
-let speed = 2;
+let scrollSpeed = 2;
 let gameStarted = false;
 
 // Load all images before the game starts
@@ -25,7 +25,7 @@ function setup() {
 }
 
 // Reset the game state
-function reset() {
+function resetGame() {
   bird = new Bird();
   pipes = [];
   score = 0;
@@ -100,8 +100,8 @@ function draw() {
     // Draw and update scrolling ground
     image(groundImg, ground1.x, height - groundHeight, width, groundHeight);
     image(groundImg, ground2.x, height - groundHeight, width, groundHeight);
-    ground1.x -= speed;
-    ground2.x -= speed;
+    ground1.x -= scrollSpeed;
+    ground2.x -= scrollSpeed;
     if (ground1.x <= -width) ground1.x = width;
     if (ground2.x <= -width) ground2.x = width;
 
@@ -129,9 +129,9 @@ function draw() {
 function click () {
   if (!gameStarted) {
     gameStarted = true;
-    reset(); // Start the game on first tap
+    resetGame(); // Start the game on first tap
   } else if (gameOver) {
-    reset();
+    resetGame();
   } else {
     bird.flap();
   }
@@ -211,7 +211,7 @@ class Pipe {
   }
 
   update() {
-    this.x -= speed; // Move pipe left
+    this.x -= scrollSpeed; // Move pipe left
   }
 
   draw() {
