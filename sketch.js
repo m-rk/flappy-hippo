@@ -6,7 +6,7 @@ let ground1, ground2;
 let score = 0;
 let gameOver = false;
 let groundHeight = 50;
-let scrollSpeed = 10;
+let scrollSpeed = 2;
 let gameStarted = false;
 let scale = 1;
 
@@ -24,7 +24,7 @@ function setup() {
   createCanvas(windowWidth, windowHeight);
   // get max of window width and height
   scale = min(width, height) / 200;
-  scrollSpeed *= scale / 6;
+  scrollSpeed = 10 * scale / 6;
   imageMode(CORNER); // Set image mode to CORNER for consistent positioning
 }
 
@@ -122,11 +122,11 @@ function draw() {
     textSize(25 * scale);
     fill(255, 0, 0);
     textAlign(CENTER);
-    text("Game Over", width / 2, height / 2 - (50 * scale));
+    text("Game Over", width / 2, height / 3);
     textSize(20 * scale);
     fill(255);
     text("Score: " + score, width / 2, height / 2);
-    text("Click to restart", width / 2, height / 2 + (50 * scale));
+    text("Tap to start", width / 2, height / 1.5);
   }
 }
 
@@ -167,7 +167,7 @@ class Bird {
     this.width = 50 * scale;   // Width of the bird image
     this.height = 34 * scale;  // Height of the bird image
     this.velocity = 0;         // Vertical velocity
-    this.gravity = 0.4 * (scale / 2);        // Gravity pulling the bird down
+    this.gravity = 0.4 * (scale / 3);        // Gravity pulling the bird down
     this.jumpStrength = -6 * (scale / 2);    // Velocity boost when flapping
   }
 
