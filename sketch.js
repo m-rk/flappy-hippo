@@ -9,6 +9,7 @@ let groundHeight = 50;
 let scrollSpeed = 2;
 let gameStarted = false;
 let scale = 1;
+let backgroundMusic;
 
 // Load all images before the game starts
 function preload() {
@@ -17,6 +18,7 @@ function preload() {
   pipeTopImg = loadImage('pipe_top.png');  // Top pipe image
   pipeBottomImg = loadImage('pipe_bottom.png'); // Bottom pipe image
   groundImg = loadImage('ground.png');     // Ground image (tileable horizontally)
+  backgroundMusic = loadSound('mario-fart.mp3');
 }
 
 // Initialize the game
@@ -34,9 +36,12 @@ function resetGame() {
   pipes = [];
   score = 0;
   gameOver = false;
-  // pipes.push(new Pipe()); // Add an initial pipe
   ground1 = { x: 0 };
   ground2 = { x: width };
+  if (backgroundMusic && !backgroundMusic.isPlaying()) {
+    backgroundMusic.loop(); // This will play the sound in a loop
+    backgroundMusic.setVolume(0.5); // Set volume to 50%
+  }
 }
 
 // Main game loop
@@ -127,6 +132,9 @@ function draw() {
     fill(255);
     text("Score: " + score, width / 2, height / 2);
     text("Tap to start", width / 2, height / 1.5);
+    if (gameOver && backgroundMusic && backgroundMusic.isPlaying()) {
+      backgroundMusic.stop();
+    }
   }
 }
 
