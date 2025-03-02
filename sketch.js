@@ -9,6 +9,7 @@ let groundHeight = 50;
 let scrollSpeed = 2;
 let gameStarted = false;
 let scale = 1;
+let audioInitialized = false;
 let backgroundMusic;
 
 // Load all images before the game starts
@@ -28,6 +29,26 @@ function setup() {
   scale = min(width, height) / 200;
   scrollSpeed = 10 * scale / 6;
   imageMode(CORNER); // Set image mode to CORNER for consistent positioning
+
+  if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+    // iOS 13+ devices
+    document.body.addEventListener('touchstart', initAudio);
+    document.body.addEventListener('mousedown', initAudio);
+  } else {
+    // Non iOS 13+ devices
+    initAudio();
+  }
+}
+
+function initAudio() {
+  if (!audioInitialized) {
+    userStartAudio().then(() => {
+      audioInitialized = true;
+      if (backgroundMusic) {
+        backgroundMusic.setVolume(0.5);
+      }
+    });
+  }
 }
 
 // Reset the game state
@@ -139,6 +160,10 @@ function draw() {
 }
 
 function click () {
+  if (!audioInitialized) {
+    initAudio();
+  }
+
   if (!gameStarted) {
     gameStarted = true;
     resetGame(); // Start the game on first tap
@@ -151,6 +176,11 @@ function click () {
 
 // screen touch
 function touchStarted() {
+  getAudioContext().resume();
+  if (backgroundMusic && !backgroundMusic.isPlaying()) {
+    backgroundMusic.play(); // This will play the sound in a loop
+    backgroundMusic.setVolume(0.5); // Set volume to 50%
+  }
   click();
   return false;
 }
@@ -158,6 +188,7 @@ function touchStarted() {
 // mouse click
 function mousePressed() {
   click();
+  return false;
 }
 
 // space key press
