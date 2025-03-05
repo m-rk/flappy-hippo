@@ -1,6 +1,6 @@
 # Flappy Hippo
 
-Inspired by an appreciation for [Moo Deng](https://knowyourmeme.com/editorials/guides/who-is-moo-deng-the-baby-hippo-the-story-of-the-adorable-thai-pygmy-hippopotamus-that-took-over-the-internet) and ultimately this GIF:
+Inspired by an appreciation for [Moo-Deng](https://knowyourmeme.com/editorials/guides/who-is-moo-deng-the-baby-hippo-the-story-of-the-adorable-thai-pygmy-hippopotamus-that-took-over-the-internet) and ultimately this GIF:
 
 ![moodeng](pixelmoo-moodeng.gif)
 
