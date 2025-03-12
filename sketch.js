@@ -271,13 +271,13 @@ class Pipe {
   draw() {
     // Draw top pipe
     image(pipeBodyImg, this.x, 0, this.width, this.topHeight);
-    image(pipeLipTopImg, this.x, this.topHeight - pipeLipTopImg.height, this.width, pipeLipTopImg.height);
+    image(pipeLipTopImg, this.x, this.topHeight - (pipeLipTopImg.height * scale), this.width, pipeLipTopImg.height * scale);
     
     // Draw bottom pipe
     let bottomY = this.topHeight + this.gapSize;
     let bottomHeight = height - bottomY;
     image(pipeBodyImg, this.x, bottomY, this.width, bottomHeight);
-    image(pipeLipBottomImg, this.x, bottomY, this.width, pipeLipBottomImg.height);
+    image(pipeLipBottomImg, this.x, bottomY, this.width, pipeLipBottomImg.height * scale);
   }
 
   offscreen() {
