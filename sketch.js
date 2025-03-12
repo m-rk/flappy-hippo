@@ -11,6 +11,7 @@ let gameStarted = false;
 let scale = 1;
 let audioInitialized = false;
 let backgroundMusic;
+let interactionAllowed = true;
 
 // Load all images before the game starts
 function preload() {
@@ -60,9 +61,9 @@ function resetGame() {
   gameOver = false;
   ground1 = { x: 0 };
   ground2 = { x: width };
+  interactionAllowed = true;
   if (backgroundMusic && !backgroundMusic.isPlaying()) {
-    backgroundMusic.loop(); // This will play the sound in a loop
-    backgroundMusic.setVolume(0.5); // Set volume to 50%
+    backgroundMusic.loop();
   }
 }
 
@@ -145,7 +146,9 @@ function draw() {
     textAlign(CENTER);
     text(score, width / 2, (50 * scale));
   } else {
-    // Display game over screen
+    // Game over
+    interactionAllowed = false;
+    setTimeout(() => { interactionAllowed = true; }, 1000);
     textSize(25 * scale);
     fill(255, 0, 0);
     textAlign(CENTER);
@@ -160,7 +163,9 @@ function draw() {
   }
 }
 
-function click () {
+function click() {
+  if (!interactionAllowed) return;
+
   if (!audioInitialized) {
     initAudio();
   }
