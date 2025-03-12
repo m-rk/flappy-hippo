@@ -81,6 +81,14 @@ function draw() {
     // Update and draw game elements when the game is active
     bird.update();
 
+    // Draw and update scrolling ground
+    image(groundImg, ground1.x, height - groundHeight, width, groundHeight);
+    image(groundImg, ground2.x, height - groundHeight, width, groundHeight);
+    ground1.x -= scrollSpeed;
+    ground2.x -= scrollSpeed;
+    if (ground1.x <= -width) ground1.x = width;
+    if (ground2.x <= -width) ground2.x = width;
+
     // Manage pipes
     for (let i = pipes.length - 1; i >= 0; i--) {
       pipes[i].update();
@@ -129,14 +137,6 @@ function draw() {
     if (frameCount % 100 === 0) {
       pipes.push(new Pipe());
     }
-
-    // Draw and update scrolling ground
-    image(groundImg, ground1.x, height - groundHeight, width, groundHeight);
-    image(groundImg, ground2.x, height - groundHeight, width, groundHeight);
-    ground1.x -= scrollSpeed;
-    ground2.x -= scrollSpeed;
-    if (ground1.x <= -width) ground1.x = width;
-    if (ground2.x <= -width) ground2.x = width;
 
     // Draw the bird
     bird.draw();
