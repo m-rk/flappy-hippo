@@ -29,7 +29,6 @@ function setup() {
   createCanvas(windowWidth, windowHeight);
   // get max of window width and height
   scale = min(width, height) / 200;
-  scrollSpeed = 10 * scale / 6;
   imageMode(CORNER); // Set image mode to CORNER for consistent positioning
 
   if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
@@ -59,6 +58,7 @@ function resetGame() {
   pipes = [];
   score = 0;
   gameOver = false;
+  scrollSpeed = 10 * scale / 6;
   ground1 = { x: 0 };
   ground2 = { x: width };
   interactionAllowed = true;
@@ -77,7 +77,7 @@ function draw() {
     fill(255);
     textAlign(CENTER);
     text("Tap to Start", width / 2, height / 2);
-  } else if (!gameOver) {
+  } else {
     // Update and draw game elements when the game is active
     bird.update();
 
@@ -116,6 +116,7 @@ function draw() {
         )
       ) {
         gameOver = true;
+        scrollSpeed = 0;
       }
 
       // Remove pipes that are off-screen
@@ -140,25 +141,27 @@ function draw() {
     // Draw the bird
     bird.draw();
 
-    // Display the score
-    textSize(20 * scale);
-    fill(255);
-    textAlign(CENTER);
-    text(score, width / 2, (50 * scale));
-  } else {
-    // Game over
-    interactionAllowed = false;
-    setTimeout(() => { interactionAllowed = true; }, 1000);
-    textSize(25 * scale);
-    fill(255, 0, 0);
-    textAlign(CENTER);
-    text("Game Over", width / 2, height / 3);
-    textSize(20 * scale);
-    fill(255);
-    text("Score: " + score, width / 2, height / 2);
-    text("Tap to start", width / 2, height / 1.5);
-    if (gameOver && backgroundMusic && backgroundMusic.isPlaying()) {
-      backgroundMusic.stop();
+    if (!gameOver) {
+      // Display the score
+      textSize(20 * scale);
+      fill(255);
+      textAlign(CENTER);
+      text(score, width / 2, (50 * scale));
+    } else {
+      // Game over
+      interactionAllowed = false;
+      setTimeout(() => { interactionAllowed = true; }, 1000);
+      textSize(25 * scale);
+      fill(255, 0, 0);
+      textAlign(CENTER);
+      text("Game Over", width / 2, height / 3);
+      textSize(20 * scale);
+      fill(255);
+      text("Score: " + score, width / 2, height / 2);
+      text("Tap to restart", width / 2, height / 1.5);
+      if (backgroundMusic && backgroundMusic.isPlaying()) {
+        backgroundMusic.stop();
+      }
     }
   }
 }
@@ -217,8 +220,10 @@ class Bird {
   }
 
   update() {
+    if (!gameOver) {
+      this.y += this.velocity;       // Update position
+    }
     this.velocity += this.gravity; // Apply gravity
-    this.y += this.velocity;       // Update position
 
     // Check collision with ground
     if (this.y + this.height / 2 >= height - groundHeight) {
