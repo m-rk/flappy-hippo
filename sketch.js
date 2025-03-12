@@ -1,5 +1,5 @@
 // Global variables
-let birdImg, bgImg, pipeTopImg, pipeBottomImg, groundImg;
+let birdImg, bgImg, pipeBodyImg, pipeLipImg, pipeLipBottomImg, groundImg;
 let bird;
 let pipes = [];
 let ground1, ground2;
@@ -16,8 +16,9 @@ let backgroundMusic;
 function preload() {
   birdImg = loadImage('hippo.png');        // Hippo sprite (PNG with transparent background)
   bgImg = loadImage('sky.png');            // Background sky image
-  pipeTopImg = loadImage('pipe_top.png');  // Top pipe image
-  pipeBottomImg = loadImage('pipe_bottom.png'); // Bottom pipe image
+  pipeBodyImg = loadImage('pipe_body.png');
+  pipeLipTopImg = loadImage('pipe_lip_top.png');
+  pipeLipBottomImg = loadImage('pipe_lip_bottom.png');
   groundImg = loadImage('ground.png');     // Ground image (tileable horizontally)
   backgroundMusic = loadSound('mario-fart.mp3');
 }
@@ -259,11 +260,14 @@ class Pipe {
 
   draw() {
     // Draw top pipe
-    image(pipeBottomImg, this.x, 0, this.width, this.topHeight);
+    image(pipeBodyImg, this.x, 0, this.width, this.topHeight);
+    image(pipeLipTopImg, this.x, this.topHeight - pipeLipTopImg.height, this.width, pipeLipTopImg.height);
+    
     // Draw bottom pipe
     let bottomY = this.topHeight + this.gapSize;
     let bottomHeight = height - bottomY;
-    image(pipeBottomImg, this.x, bottomY, this.width, bottomHeight);
+    image(pipeBodyImg, this.x, bottomY, this.width, bottomHeight);
+    image(pipeLipBottomImg, this.x, bottomY, this.width, pipeLipBottomImg.height);
   }
 
   offscreen() {
