@@ -4,6 +4,7 @@ let bgImg, pipeBodyImg, pipeLipImg, pipeLipBottomImg, groundImg;
 let hippo;
 let pipes = [];
 let ground1, ground2;
+let groundWidth = 731;
 let score = 0;
 let gameOver = false;
 let groundHeight = 50;
@@ -67,7 +68,7 @@ function resetGame() {
   gameOver = false;
   scrollSpeed = 10 * scale / 6;
   ground1 = { x: 0 };
-  ground2 = { x: width };
+  ground2 = { x: groundWidth };
   interactionAllowed = true;
   if (backgroundMusic && !backgroundMusic.isPlaying()) {
     backgroundMusic.loop();
@@ -77,7 +78,29 @@ function resetGame() {
 // Main game loop
 function draw() {
   // Draw the background
-  image(bgImg, 0, 0, width, height);
+  background(128, 198, 212); // sky blue
+
+  let imgRatio = bgImg.width / bgImg.height;
+  let canvasRatio = width / height;
+  
+  let bgWidth, bgHeight, bgX, bgY;
+  
+  if (canvasRatio > imgRatio) {
+    // Canvas is wider than image ratio - scale to width
+    bgWidth = width;
+    bgHeight = width / imgRatio;
+    bgX = 0;
+    bgY = (height - bgHeight) / 2; // Center vertically
+  } else {
+    // Canvas is taller than image ratio - scale to height
+    bgHeight = height;
+    bgWidth = height * imgRatio;
+    bgX = (width - bgWidth) / 2; // Center horizontally
+    bgY = 0;
+  }
+  
+  // Draw the background image with proper proportions
+  image(bgImg, bgX, bgY, bgWidth, bgHeight);
 
   if (!gameStarted) {
     textSize(20 * scale);
@@ -89,12 +112,12 @@ function draw() {
     hippo.update();
 
     // Draw and update scrolling ground
-    image(groundImg, ground1.x, height - groundHeight, width, groundHeight);
-    image(groundImg, ground2.x, height - groundHeight, width, groundHeight);
+    image(groundImg, ground1.x, height - groundHeight, groundWidth, groundHeight);
+    image(groundImg, ground2.x, height - groundHeight, groundWidth, groundHeight);
     ground1.x -= scrollSpeed;
     ground2.x -= scrollSpeed;
-    if (ground1.x <= -width) ground1.x = width;
-    if (ground2.x <= -width) ground2.x = width;
+    if (ground1.x <= -groundWidth) ground1.x = groundWidth;
+    if (ground2.x <= -groundWidth) ground2.x = groundWidth;
 
     // Manage pipes
     for (let i = pipes.length - 1; i >= 0; i--) {
@@ -292,13 +315,13 @@ class Pipe {
   draw() {
     // Draw top pipe
     image(pipeBodyImg, this.x, 0, this.width, this.topHeight);
-    image(pipeLipTopImg, this.x, this.topHeight - (pipeLipTopImg.height * scale), this.width, pipeLipTopImg.height * scale);
+    image(pipeLipTopImg, this.x, this.topHeight - (pipeLipTopImg.height * scale / 2), this.width, pipeLipTopImg.height * scale / 2);
     
     // Draw bottom pipe
     let bottomY = this.topHeight + this.gapSize;
     let bottomHeight = height - bottomY;
     image(pipeBodyImg, this.x, bottomY, this.width, bottomHeight);
-    image(pipeLipBottomImg, this.x, bottomY, this.width, pipeLipBottomImg.height * scale);
+    image(pipeLipBottomImg, this.x, bottomY, this.width, pipeLipBottomImg.height * scale / 2);
   }
 
   offscreen() {
