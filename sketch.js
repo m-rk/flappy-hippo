@@ -1,6 +1,6 @@
 // Global variables
-let birdImg, bgImg, pipeBodyImg, pipeLipImg, pipeLipBottomImg, groundImg;
-let bird;
+let hippoImg, bgImg, pipeBodyImg, pipeLipImg, pipeLipBottomImg, groundImg;
+let hippo;
 let pipes = [];
 let ground1, ground2;
 let score = 0;
@@ -15,7 +15,7 @@ let interactionAllowed = true;
 
 // Load all images before the game starts
 function preload() {
-  birdImg = loadImage('hippo.png');        // Hippo sprite (PNG with transparent background)
+  hippoImg = loadImage('hippo.png');        // Hippo sprite (PNG with transparent background)
   bgImg = loadImage('sky.png');            // Background sky image
   pipeBodyImg = loadImage('pipe_body.png');
   pipeLipTopImg = loadImage('pipe_lip_top.png');
@@ -54,7 +54,7 @@ function initAudio() {
 
 // Reset the game state
 function resetGame() {
-  bird = new Bird();
+  hippo = new Bird();
   pipes = [];
   score = 0;
   gameOver = false;
@@ -79,7 +79,7 @@ function draw() {
     text("Tap to Start", width / 2, height / 2);
   } else {
     // Update and draw game elements when the game is active
-    bird.update();
+    hippo.update();
 
     // Draw and update scrolling ground
     image(groundImg, ground1.x, height - groundHeight, width, groundHeight);
@@ -94,8 +94,8 @@ function draw() {
       pipes[i].update();
       pipes[i].draw();
 
-      // Increment score when bird passes a pipe
-      if (pipes[i].x + pipes[i].width < bird.x && !pipes[i].passed) {
+      // Increment score when hippo passes a pipe
+      if (pipes[i].x + pipes[i].width < hippo.x && !pipes[i].passed) {
         score++;
         pipes[i].passed = true;
       }
@@ -103,20 +103,20 @@ function draw() {
       // Check for collisions with pipes
       if (
         rectOverlap(
-          bird.x - bird.width / 2,
-          bird.y - bird.height / 2,
-          bird.width,
-          bird.height,
+          hippo.x - hippo.width / 2,
+          hippo.y - hippo.height / 2,
+          hippo.width,
+          hippo.height,
           pipes[i].x,
           0,
           pipes[i].width,
           pipes[i].topHeight
         ) ||
         rectOverlap(
-          bird.x - bird.width / 2,
-          bird.y - bird.height / 2,
-          bird.width,
-          bird.height,
+          hippo.x - hippo.width / 2,
+          hippo.y - hippo.height / 2,
+          hippo.width,
+          hippo.height,
           pipes[i].x,
           pipes[i].topHeight + pipes[i].gapSize,
           pipes[i].width,
@@ -138,8 +138,8 @@ function draw() {
       pipes.push(new Pipe());
     }
 
-    // Draw the bird
-    bird.draw();
+    // Draw the hippo
+    hippo.draw();
 
     if (!gameOver) {
       // Display the score
@@ -179,7 +179,7 @@ function click() {
   } else if (gameOver) {
     resetGame();
   } else {
-    bird.flap();
+    hippo.flap();
   }
 }
 
@@ -212,10 +212,10 @@ class Bird {
   constructor() {
     this.x = width / 3;        // Fixed x-position
     this.y = height / 2;       // Start in the middle
-    this.width = 50 * scale;   // Width of the bird image
-    this.height = 34 * scale;  // Height of the bird image
+    this.width = 50 * scale;   // Width of the hippo image
+    this.height = 34 * scale;  // Height of the hippo image
     this.velocity = 0;         // Vertical velocity
-    this.gravity = 0.4 * (scale / 3);        // Gravity pulling the bird down
+    this.gravity = 0.4 * (scale / 3);        // Gravity pulling the hippo down
     this.jumpStrength = -6 * (scale / 2);    // Velocity boost when flapping
   }
 
@@ -239,13 +239,13 @@ class Bird {
   }
 
   draw() {
-    // Rotate the bird based on velocity for a polished effect
+    // Rotate the hippo based on velocity for a polished effect
     let angle = map(this.velocity, -10, 10, -45, 45); // Map velocity to angle
     let angleRad = radians(angle);                    // Convert to radians
     push();
-    translate(this.x, this.y);                        // Move to bird's position
+    translate(this.x, this.y);                        // Move to hippo's position
     rotate(angleRad);                                 // Rotate based on velocity
-    image(birdImg, -this.width / 2, -this.height / 2, this.width, this.height); // Draw centered
+    image(hippoImg, -this.width / 2, -this.height / 2, this.width, this.height); // Draw centered
     pop();
   }
 
@@ -261,7 +261,7 @@ class Pipe {
     this.width = 50 * scale;                    // Width of the pipe
     this.gapSize = 120 * (scale);           // Size of the gap
     this.topHeight = random(50 * (scale / 2), height - groundHeight - this.gapSize - (50 * (scale / 2))); // Random top pipe height
-    this.passed = false;                        // Track if bird has passed this pipe
+    this.passed = false;                        // Track if hippo has passed this pipe
   }
 
   update() {
