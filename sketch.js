@@ -122,8 +122,8 @@ function draw() {
         rectOverlap(
           hippo.x - hippo.width / 2,
           hippo.y - hippo.height / 2,
-          hippo.width,
-          hippo.height,
+          hippo.width * 0.8,
+          hippo.height * 0.9,
           pipes[i].x,
           pipes[i].topHeight + pipes[i].gapSize,
           pipes[i].width,
