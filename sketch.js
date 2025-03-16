@@ -13,6 +13,7 @@ let scale = 1;
 let audioInitialized = false;
 let backgroundMusic;
 let interactionAllowed = true;
+let isBlinking = false;
 
 // Load all images before the game starts
 function preload() {
@@ -185,6 +186,10 @@ function click() {
   } else if (gameOver) {
     resetGame();
   } else {
+    // in-game click
+    if (random(1) < 0.3) {
+      isBlinking = true;
+    }
     hippo.flap();
   }
 }
@@ -250,9 +255,11 @@ class Bird {
     let angleRad = radians(angle);                    // Convert to radians
     let hippoImg = hippoHangImg;
     if (angle < -10) {
-      hippoImg = hippoBounceImg;
+      hippoImg = (isBlinking) ? hippoBounceBlinkImg : hippoBounceImg;
     } else if (angle < 0) {
-      hippoImg = hippoJumpImg;
+      hippoImg = (isBlinking) ? hippoJumpBlinkImg : hippoJumpImg;
+    } else if (angle >= 0) {
+      isBlinking = false;
     } else if (angle > 20) {
       hippoImg = hippoFallImg;
     }
