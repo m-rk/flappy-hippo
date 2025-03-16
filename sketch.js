@@ -249,11 +249,11 @@ class Bird {
     let angle = map(this.velocity, -10, 10, -45, 45); // Map velocity to angle
     let angleRad = radians(angle);                    // Convert to radians
     let hippoImg = hippoHangImg;
-    if (angle < -25) {
+    if (angle < -10) {
       hippoImg = hippoBounceImg;
-    } else if (angle < -5) {
+    } else if (angle < 0) {
       hippoImg = hippoJumpImg;
-    } else if (angle > 10) {
+    } else if (angle > 20) {
       hippoImg = hippoFallImg;
     }
     push();
