@@ -1,5 +1,6 @@
 // Global variables
-let hippoImg, bgImg, pipeBodyImg, pipeLipImg, pipeLipBottomImg, groundImg;
+let hippoHangImg, hippoBounceImg, hippoBounceBlinkImg, hippoJumpImg, hippoJumpBlinkImg, hippoFallImg; 
+let bgImg, pipeBodyImg, pipeLipImg, pipeLipBottomImg, groundImg;
 let hippo;
 let pipes = [];
 let ground1, ground2;
@@ -15,7 +16,12 @@ let interactionAllowed = true;
 
 // Load all images before the game starts
 function preload() {
-  hippoImg = loadImage('hippo.png');        // Hippo sprite (PNG with transparent background)
+  hippoHangImg = loadImage('moodeng-hang.png');
+  hippoBounceImg = loadImage('moodeng-bounce.png');
+  hippoBounceBlinkImg = loadImage('moodeng-bounce-blink.png');
+  hippoJumpImg = loadImage('moodeng-jump.png');
+  hippoJumpBlinkImg = loadImage('moodeng-jump-blink.png');
+  hippoFallImg = loadImage('moodeng-fall.png');
   bgImg = loadImage('sky.png');            // Background sky image
   pipeBodyImg = loadImage('pipe_body.png');
   pipeLipTopImg = loadImage('pipe_lip_top.png');
@@ -242,6 +248,14 @@ class Bird {
     // Rotate the hippo based on velocity for a polished effect
     let angle = map(this.velocity, -10, 10, -45, 45); // Map velocity to angle
     let angleRad = radians(angle);                    // Convert to radians
+    let hippoImg = hippoHangImg;
+    if (angle < -25) {
+      hippoImg = hippoBounceImg;
+    } else if (angle < -5) {
+      hippoImg = hippoJumpImg;
+    } else if (angle > 10) {
+      hippoImg = hippoFallImg;
+    }
     push();
     translate(this.x, this.y);                        // Move to hippo's position
     rotate(angleRad);                                 // Rotate based on velocity
