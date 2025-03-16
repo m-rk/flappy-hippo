@@ -281,10 +281,12 @@ class Bird {
       hippoImg = (isBlinking) ? hippoBounceBlinkImg : hippoBounceImg;
     } else if (angle < 0) {
       hippoImg = (isBlinking) ? hippoJumpBlinkImg : hippoJumpImg;
-    } else if (angle >= 0) {
+    } else {
+      // falling
       isBlinking = false;
-    } else if (angle > 20) {
-      hippoImg = hippoFallImg;
+      if (angle > 10) {
+        hippoImg = hippoFallImg;
+      }
     }
     push();
     translate(this.x, this.y);                        // Move to hippo's position
