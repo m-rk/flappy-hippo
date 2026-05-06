@@ -22,6 +22,8 @@ const FACE_W = 52;
 const FACE_H = FACE_W * (FACE_SOURCE_H / FACE_SOURCE_W);
 
 const PLAYER_VELOCITY_MULT = 1.5;
+const GROWTH_BASE = 0.09;
+const GROWTH_DECAY = 0.8;
 const PIPE_GAP_MULT = 1.5;
 const BASE_SPEED = 2.08;
 const PIPE_W = 62;
@@ -287,7 +289,7 @@ function handleAction() {
 }
 
 function flap() {
-  player.vy = -7.35 * PLAYER_VELOCITY_MULT;
+  player.vy = (-7.35 * PLAYER_VELOCITY_MULT) / max(1, player.scale);
   player.rot = -0.36;
   burst(player.x - 22, player.y + 18, color(236, 248, 213), 5);
 }
@@ -355,7 +357,7 @@ function collectFace(obstacle) {
   bestScore = max(bestScore, score);
   localStorage.setItem("flappy-hippo-best", String(bestScore));
 
-  const growth = 0.07 * pow(0.78, score - 1);
+  const growth = GROWTH_BASE * pow(GROWTH_DECAY, score - 1);
   player.growth = min(0.32, player.growth + growth);
   player.targetScale = 1 + player.growth;
 
