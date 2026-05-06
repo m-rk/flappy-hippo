@@ -55,9 +55,9 @@ let lastActionFrame = -99;
 function preload() {
   for (let i = 1; i <= FRAME_COUNT; i += 1) {
     const id = String(i).padStart(3, "0");
-    hippoFrames.push(loadImage(`codex/assets/hippo/player/hippo-${id}.png`));
+    hippoFrames.push(loadImage(`assets/hippo/player/hippo-${id}.png`));
   }
-  faceImg = loadImage("codex/assets/hippo/face.png");
+  faceImg = loadImage("assets/hippo/face.png");
 }
 
 function setup() {
