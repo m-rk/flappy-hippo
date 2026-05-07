@@ -560,14 +560,16 @@ function drawCloudPuffs(x, y, s, alpha) {
 }
 
 function drawObstacles() {
+  const view = viewBounds();
+  const topPipeY = min(-160, view.top - 120);
   for (const obstacle of obstacles) {
-    drawObstacle(obstacle);
+    drawObstacle(obstacle, topPipeY);
   }
 }
 
-function drawObstacle(obstacle) {
+function drawObstacle(obstacle, topPipeY) {
   const bottomY = obstacle.top + obstacle.gap;
-  drawPipe(obstacle.x, -40, obstacle.w, obstacle.top + 40, true);
+  drawPipe(obstacle.x, topPipeY, obstacle.w, obstacle.top - topPipeY, true);
   drawPipe(obstacle.x, bottomY, obstacle.w, GROUND_Y - bottomY, false);
   if (!obstacle.collected) {
     drawCollectibleFace(obstacle.x + obstacle.w * 0.5, obstacle.top + obstacle.gap * 0.5);
