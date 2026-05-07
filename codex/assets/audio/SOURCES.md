@@ -22,3 +22,11 @@ All candidate effect files are from Kenney audio packs released under Creative C
   - `candidates/death-impact-wood-heavy-000.ogg` from `impact_wood_heavy_000.ogg`
   - `candidates/death-impact-wood-medium-003.ogg` from `impact_wood_medium_003.ogg`
   - `candidates/death-impact-tin-medium-004.ogg` from `impact_tin_medium_004.ogg`
+- OpenGameArt "Game Over Sound(Old School)" by den_yes, CC0: https://opengameart.org/content/game-over-soundold-school
+  - `candidates/crash-gameover-oldschool.ogg` from `GameOver.ogg`
+- OpenGameArt "Game Over Trumpet SFX" by 0new4y, CC0: https://opengameart.org/content/game-over-trumpet-sfx
+  - `candidates/crash-lose-trumpet.ogg` from `losetrumpet.ogg`
+- OpenGameArt "Game Over" by GreyFrogGames, CC0: https://opengameart.org/content/game-over-10
+  - `candidates/crash-gameover-greyfrog.mp3` from `gameover.mp3`
+- OpenGameArt "Game Over - Bad chest SFX" by Oiboo, CC0: https://opengameart.org/content/game-over-bad-chest-sfx
+  - `candidates/crash-bad-chest.wav` from `game_over_bad_chest.wav`

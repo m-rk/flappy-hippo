@@ -139,6 +139,12 @@
         border-top: 2px solid rgba(5, 7, 7, 0.18);
       }
 
+      .sound-row.selected {
+        padding-inline: 10px;
+        border: 3px solid var(--shadow);
+        background: rgba(255, 246, 169, 0.58);
+      }
+
       .sound-row:first-of-type {
         border-top: 0;
       }
@@ -164,6 +170,23 @@
         padding: 3px 7px;
         border: 2px solid var(--shadow);
         background: white;
+        font-size: 0.72rem;
+        font-weight: 900;
+      }
+
+      .badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .badge {
+        display: inline-flex;
+        width: fit-content;
+        padding: 3px 7px;
+        border: 2px solid var(--shadow);
+        background: var(--pink);
+        color: var(--shadow);
         font-size: 0.72rem;
         font-weight: 900;
       }
@@ -210,7 +233,7 @@
       <section id="board" aria-label="Sound effect candidates"></section>
 
       <footer>
-        Candidate sources: <a href="https://kenney.nl/assets/interface-sounds">Kenney Interface Sounds</a>, <a href="https://kenney.nl/assets/ui-audio">Kenney UI Audio</a>, and <a href="https://kenney.nl/assets/impact-sounds">Kenney Impact Sounds</a>, all listed as Creative Commons CC0. Local file mapping is in <a href="assets/audio/SOURCES.md">assets/audio/SOURCES.md</a>.
+        Candidate sources: <a href="https://kenney.nl/assets/interface-sounds">Kenney Interface Sounds</a>, <a href="https://kenney.nl/assets/ui-audio">Kenney UI Audio</a>, <a href="https://kenney.nl/assets/impact-sounds">Kenney Impact Sounds</a>, and selected <a href="https://opengameart.org/">OpenGameArt</a> CC0 uploads. Local file mapping is in <a href="assets/audio/SOURCES.md">assets/audio/SOURCES.md</a>.
       </footer>
     </main>
 
@@ -240,7 +263,8 @@
               label: "Select 003",
               file: "assets/audio/candidates/jump-select-003.wav",
               source: "Kenney Interface",
-              note: "Brighter arcade lift, more explicit input feedback."
+              selected: true,
+              note: "Brighter arcade lift, more explicit input feedback. Used in-game for jump."
             },
             {
               label: "Switch 013",
@@ -269,7 +293,8 @@
               label: "Select 006",
               file: "assets/audio/candidates/collect-select-006.wav",
               source: "Kenney Interface",
-              note: "Longer shiny pickup flourish."
+              selected: true,
+              note: "Longer shiny pickup flourish. Used in-game for face collection."
             }
           ]
         },
@@ -292,7 +317,32 @@
               label: "Tin Medium 004",
               file: "assets/audio/candidates/death-impact-tin-medium-004.ogg",
               source: "Kenney Impact",
-              note: "Sharper comic bonk if the crash needs more punctuation."
+              selected: true,
+              note: "Current in-game crash sound. Short and punchy, but likely too clipped."
+            },
+            {
+              label: "Game Over Old School",
+              file: "assets/audio/candidates/crash-gameover-oldschool.ogg",
+              source: "OpenGameArt CC0",
+              note: "Longer retro fail sting, around 1.6 seconds."
+            },
+            {
+              label: "Lose Trumpet",
+              file: "assets/audio/candidates/crash-lose-trumpet.ogg",
+              source: "OpenGameArt CC0",
+              note: "Comedic descending loser trumpet, around 1.1 seconds."
+            },
+            {
+              label: "Game Over GreyFrog",
+              file: "assets/audio/candidates/crash-gameover-greyfrog.mp3",
+              source: "OpenGameArt CC0",
+              note: "Clean game-over accent, around 1.5 seconds."
+            },
+            {
+              label: "Bad Chest",
+              file: "assets/audio/candidates/crash-bad-chest.wav",
+              source: "OpenGameArt CC0",
+              note: "Much more protracted negative cue, around 6 seconds."
             }
           ]
         },
@@ -303,7 +353,8 @@
               label: "Toggle 001",
               file: "assets/audio/candidates/ui-start-toggle-001.wav",
               source: "Kenney Interface",
-              note: "Button-like start or retry cue."
+              selected: true,
+              note: "Button-like start or retry cue. Used in-game for start and retry."
             },
             {
               label: "Click 001",
@@ -355,6 +406,7 @@
           for (const sound of group.sounds) {
             const row = document.createElement("div");
             row.className = "sound-row";
+            if (sound.selected) row.classList.add("selected");
 
             const meta = document.createElement("div");
             meta.className = "sound-meta";
@@ -367,6 +419,16 @@
             source.className = "source";
             source.textContent = sound.source;
 
+            const badges = document.createElement("span");
+            badges.className = "badges";
+            badges.append(source);
+            if (sound.selected) {
+              const selected = document.createElement("span");
+              selected.className = "badge";
+              selected.textContent = "IN GAME";
+              badges.append(selected);
+            }
+
             const note = document.createElement("span");
             note.className = "sound-note";
             note.textContent = sound.note;
@@ -376,7 +438,7 @@
             button.textContent = "PLAY";
             button.addEventListener("click", () => playSound(sound));
 
-            meta.append(name, source, note);
+            meta.append(name, badges, note);
             row.append(meta, button);
             section.append(row);
           }

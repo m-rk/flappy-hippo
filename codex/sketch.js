@@ -31,6 +31,12 @@ const PIPE_LIP_H = 30;
 const READY_PLAYER_Y = 318;
 const MUSIC_SRC = "assets/audio/mario-fart.mp3";
 const MUSIC_VOLUME = 0.32;
+const SOUND_EFFECTS = {
+  jump: { src: "assets/audio/candidates/jump-select-003.wav", volume: 0.64 },
+  collect: { src: "assets/audio/candidates/collect-select-006.wav", volume: 0.58 },
+  crash: { src: "assets/audio/candidates/death-impact-tin-medium-004.ogg", volume: 0.8 },
+  start: { src: "assets/audio/candidates/ui-start-toggle-001.wav", volume: 0.56 }
+};
 
 let fitScale = 1;
 let fitX = 0;
@@ -40,6 +46,7 @@ let faceImg;
 let faceOutlineImg;
 let musicTrack = null;
 let musicStarted = false;
+let sfxTracks = {};
 let clouds = [];
 let obstacles = [];
 let particles = [];
@@ -109,7 +116,8 @@ function setup() {
         : null,
       audio: {
         musicReady: Boolean(musicTrack),
-        musicStarted
+        musicStarted,
+        sfxReady: Object.keys(sfxTracks)
       },
       frames: hippoFrames.length
     })
@@ -142,6 +150,14 @@ function setupAudio() {
   musicTrack.loop = true;
   musicTrack.preload = "auto";
   musicTrack.volume = MUSIC_VOLUME;
+
+  sfxTracks = {};
+  for (const [name, config] of Object.entries(SOUND_EFFECTS)) {
+    const track = new Audio(config.src);
+    track.preload = "auto";
+    track.volume = config.volume;
+    sfxTracks[name] = track;
+  }
 }
 
 function startMusic() {
@@ -162,6 +178,18 @@ function startMusic() {
     return;
   }
   musicStarted = true;
+}
+
+function playSfx(name) {
+  const baseTrack = sfxTracks[name];
+  if (!baseTrack) return;
+
+  const track = baseTrack.cloneNode();
+  track.volume = baseTrack.volume;
+  const playAttempt = track.play();
+  if (playAttempt && typeof playAttempt.catch === "function") {
+    playAttempt.catch(() => {});
+  }
 }
 
 function resetRun() {
@@ -308,9 +336,10 @@ function handleAction() {
   startMusic();
 
   if (state === "ready") {
+    playSfx("start");
     resetRun();
     state = "playing";
-    flap();
+    flap({ silent: true });
     return;
   }
 
@@ -320,13 +349,15 @@ function handleAction() {
   }
 
   if (state === "crashed" && crashCooldown === 0) {
+    playSfx("start");
     resetRun();
     state = "playing";
-    flap();
+    flap({ silent: true });
   }
 }
 
-function flap() {
+function flap(options = {}) {
+  if (!options.silent) playSfx("jump");
   player.vy = (-7.35 * PLAYER_VELOCITY_MULT) / max(1, player.scale);
   player.rot = -0.36;
   burst(player.x - 22, player.y + 18, color(236, 248, 213), 5);
@@ -334,6 +365,7 @@ function flap() {
 
 function crash() {
   if (state !== "playing") return;
+  playSfx("crash");
   const popScale = player.scale;
   const popX = player.x;
   const popY = constrain(player.y, 30, GROUND_Y - PLAYER_GROUND_RADIUS * popScale);
@@ -391,6 +423,7 @@ function spawnObstacle() {
 
 function collectFace(obstacle) {
   obstacle.collected = true;
+  playSfx("collect");
   score += 1;
   bestScore = max(bestScore, score);
   localStorage.setItem("flappy-hippo-best", String(bestScore));
