@@ -29,6 +29,8 @@ const BASE_SPEED = 2.08;
 const PIPE_W = 62;
 const PIPE_LIP_H = 30;
 const READY_PLAYER_Y = 318;
+const MUSIC_SRC = "assets/audio/mario-fart.mp3";
+const MUSIC_VOLUME = 0.32;
 
 let fitScale = 1;
 let fitX = 0;
@@ -36,6 +38,8 @@ let fitY = 0;
 let hippoFrames = [];
 let faceImg;
 let faceOutlineImg;
+let musicTrack = null;
+let musicStarted = false;
 let clouds = [];
 let obstacles = [];
 let particles = [];
@@ -71,6 +75,7 @@ function setup() {
   updateFit();
   bestScore = Number(localStorage.getItem("flappy-hippo-best") || 0);
   faceOutlineImg = buildFaceOutlineImage(4);
+  setupAudio();
   clouds = makeClouds();
   resetRun();
   state = "ready";
@@ -102,6 +107,10 @@ function setup() {
             faces: deathPieces.filter((piece) => piece.face).length
           }
         : null,
+      audio: {
+        musicReady: Boolean(musicTrack),
+        musicStarted
+      },
       frames: hippoFrames.length
     })
   };
@@ -125,6 +134,34 @@ function viewBounds() {
     top: -fitY / fitScale,
     bottom: (height - fitY) / fitScale
   };
+}
+
+function setupAudio() {
+  if (typeof Audio === "undefined") return;
+  musicTrack = new Audio(MUSIC_SRC);
+  musicTrack.loop = true;
+  musicTrack.preload = "auto";
+  musicTrack.volume = MUSIC_VOLUME;
+}
+
+function startMusic() {
+  if (!musicTrack || !musicTrack.paused) {
+    musicStarted = Boolean(musicTrack);
+    return;
+  }
+
+  const playAttempt = musicTrack.play();
+  if (playAttempt && typeof playAttempt.then === "function") {
+    playAttempt
+      .then(() => {
+        musicStarted = true;
+      })
+      .catch(() => {
+        musicStarted = false;
+      });
+    return;
+  }
+  musicStarted = true;
 }
 
 function resetRun() {
@@ -268,6 +305,7 @@ function currentSpeed() {
 function handleAction() {
   if (frameCount === lastActionFrame) return;
   lastActionFrame = frameCount;
+  startMusic();
 
   if (state === "ready") {
     resetRun();

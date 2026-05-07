@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#7bc5cd" />
+    <title>Flappy Hippo Soundboard</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --sky: #7bc5cd;
+        --ink: #152528;
+        --shadow: #050707;
+        --panel: #eefbd8;
+        --panel-strong: #fff6a9;
+        --leaf: #40c446;
+        --leaf-dark: #277538;
+        --pink: #ff77c2;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        min-height: 100%;
+        margin: 0;
+      }
+
+      body {
+        background: var(--sky);
+        color: var(--ink);
+        font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+      }
+
+      main {
+        width: min(960px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 32px 0 44px;
+      }
+
+      header {
+        display: grid;
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+
+      h1 {
+        margin: 0;
+        color: var(--panel-strong);
+        font-size: clamp(2.4rem, 8vw, 4.8rem);
+        line-height: 0.95;
+        letter-spacing: 0;
+        text-shadow:
+          4px 0 var(--shadow),
+          -4px 0 var(--shadow),
+          0 4px var(--shadow),
+          0 -4px var(--shadow),
+          5px 6px var(--leaf-dark);
+      }
+
+      p {
+        max-width: 66ch;
+        margin: 0;
+        font-size: 0.96rem;
+        line-height: 1.55;
+      }
+
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+        padding: 14px;
+        border: 4px solid var(--shadow);
+        background: var(--panel);
+        box-shadow: 6px 7px 0 var(--leaf-dark);
+      }
+
+      .volume {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 900;
+      }
+
+      input[type="range"] {
+        width: min(260px, 46vw);
+        accent-color: var(--pink);
+      }
+
+      button {
+        min-height: 42px;
+        border: 3px solid var(--shadow);
+        background: var(--panel-strong);
+        color: var(--shadow);
+        cursor: pointer;
+        font: inherit;
+        font-weight: 900;
+        box-shadow: 4px 5px 0 var(--shadow);
+      }
+
+      button:hover {
+        transform: translate(-1px, -1px);
+        box-shadow: 5px 6px 0 var(--shadow);
+      }
+
+      button:active {
+        transform: translate(3px, 4px);
+        box-shadow: 1px 1px 0 var(--shadow);
+      }
+
+      .status {
+        min-height: 1.5em;
+        font-weight: 900;
+      }
+
+      .sound-group {
+        margin-top: 22px;
+        padding: 16px;
+        border: 4px solid var(--shadow);
+        background: rgba(238, 251, 216, 0.82);
+        box-shadow: 6px 7px 0 rgba(39, 117, 56, 0.85);
+      }
+
+      h2 {
+        margin: 0 0 12px;
+        font-size: 1.35rem;
+        letter-spacing: 0;
+      }
+
+      .sound-row {
+        display: grid;
+        grid-template-columns: minmax(180px, 1fr) auto;
+        gap: 12px;
+        align-items: center;
+        padding: 12px 0;
+        border-top: 2px solid rgba(5, 7, 7, 0.18);
+      }
+
+      .sound-row:first-of-type {
+        border-top: 0;
+      }
+
+      .sound-meta {
+        display: grid;
+        gap: 4px;
+      }
+
+      .sound-name {
+        font-weight: 900;
+      }
+
+      .sound-note {
+        color: rgba(21, 37, 40, 0.74);
+        font-size: 0.86rem;
+        line-height: 1.35;
+      }
+
+      .source {
+        display: inline-flex;
+        width: fit-content;
+        padding: 3px 7px;
+        border: 2px solid var(--shadow);
+        background: white;
+        font-size: 0.72rem;
+        font-weight: 900;
+      }
+
+      a {
+        color: var(--shadow);
+        font-weight: 900;
+      }
+
+      footer {
+        margin-top: 28px;
+        font-size: 0.84rem;
+        line-height: 1.5;
+      }
+
+      @media (max-width: 620px) {
+        main {
+          width: min(100% - 20px, 960px);
+          padding-top: 22px;
+        }
+
+        .sound-row {
+          grid-template-columns: 1fr;
+        }
+
+        .sound-row button {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Soundboard</h1>
+        <p>Press each button to audition candidate sounds for the isolated Flappy Hippo build. The effects are CC0 Kenney candidates; the music button previews the existing project MP3 copied into the codex assets folder.</p>
+        <div class="toolbar">
+          <label class="volume" for="volume">Volume <input id="volume" type="range" min="0" max="1" step="0.05" value="0.7" /></label>
+          <button type="button" id="stop">STOP</button>
+          <span class="status" id="status" aria-live="polite">Ready.</span>
+        </div>
+      </header>
+
+      <section id="board" aria-label="Sound effect candidates"></section>
+
+      <footer>
+        Candidate sources: <a href="https://kenney.nl/assets/interface-sounds">Kenney Interface Sounds</a>, <a href="https://kenney.nl/assets/ui-audio">Kenney UI Audio</a>, and <a href="https://kenney.nl/assets/impact-sounds">Kenney Impact Sounds</a>, all listed as Creative Commons CC0. Local file mapping is in <a href="assets/audio/SOURCES.md">assets/audio/SOURCES.md</a>.
+      </footer>
+    </main>
+
+    <script>
+      const groups = [
+        {
+          name: "Music",
+          sounds: [
+            {
+              label: "Existing MP3 loop",
+              file: "assets/audio/mario-fart.mp3",
+              source: "Project asset",
+              note: "The track now used by the /codex game after first input."
+            }
+          ]
+        },
+        {
+          name: "Jump",
+          sounds: [
+            {
+              label: "Bong 001",
+              file: "assets/audio/candidates/jump-bong-001.wav",
+              source: "Kenney Interface",
+              note: "Round and springy, good for a chunky flap."
+            },
+            {
+              label: "Select 003",
+              file: "assets/audio/candidates/jump-select-003.wav",
+              source: "Kenney Interface",
+              note: "Brighter arcade lift, more explicit input feedback."
+            },
+            {
+              label: "Switch 013",
+              file: "assets/audio/candidates/jump-switch-013.wav",
+              source: "Kenney UI",
+              note: "Tiny, dry snap if the jump should stay subtle."
+            }
+          ]
+        },
+        {
+          name: "Face Collect",
+          sounds: [
+            {
+              label: "Confirmation 001",
+              file: "assets/audio/candidates/collect-confirmation-001.wav",
+              source: "Kenney Interface",
+              note: "Short success chime for the +heart pickup moment."
+            },
+            {
+              label: "Confirmation 002",
+              file: "assets/audio/candidates/collect-confirmation-002.wav",
+              source: "Kenney Interface",
+              note: "More celebratory and noticeable."
+            },
+            {
+              label: "Select 006",
+              file: "assets/audio/candidates/collect-select-006.wav",
+              source: "Kenney Interface",
+              note: "Longer shiny pickup flourish."
+            }
+          ]
+        },
+        {
+          name: "Crash",
+          sounds: [
+            {
+              label: "Wood Heavy 000",
+              file: "assets/audio/candidates/death-impact-wood-heavy-000.ogg",
+              source: "Kenney Impact",
+              note: "Soft thump that suits a squashy pop."
+            },
+            {
+              label: "Wood Medium 003",
+              file: "assets/audio/candidates/death-impact-wood-medium-003.ogg",
+              source: "Kenney Impact",
+              note: "Lighter bump, less final."
+            },
+            {
+              label: "Tin Medium 004",
+              file: "assets/audio/candidates/death-impact-tin-medium-004.ogg",
+              source: "Kenney Impact",
+              note: "Sharper comic bonk if the crash needs more punctuation."
+            }
+          ]
+        },
+        {
+          name: "Start / Retry",
+          sounds: [
+            {
+              label: "Toggle 001",
+              file: "assets/audio/candidates/ui-start-toggle-001.wav",
+              source: "Kenney Interface",
+              note: "Button-like start or retry cue."
+            },
+            {
+              label: "Click 001",
+              file: "assets/audio/candidates/ui-start-click-001.wav",
+              source: "Kenney Interface",
+              note: "Plain UI click for lower-noise controls."
+            }
+          ]
+        }
+      ];
+
+      const board = document.querySelector("#board");
+      const statusEl = document.querySelector("#status");
+      const volumeEl = document.querySelector("#volume");
+      const stopEl = document.querySelector("#stop");
+      let activeAudio = null;
+
+      function stopActive() {
+        if (!activeAudio) return;
+        activeAudio.pause();
+        activeAudio.currentTime = 0;
+        activeAudio = null;
+      }
+
+      function playSound(sound) {
+        stopActive();
+        const audio = new Audio(sound.file);
+        audio.volume = Number(volumeEl.value);
+        activeAudio = audio;
+        statusEl.textContent = `Playing ${sound.label}.`;
+        audio.addEventListener("ended", () => {
+          if (activeAudio === audio) activeAudio = null;
+          statusEl.textContent = "Ready.";
+        });
+        audio.play().catch(() => {
+          statusEl.textContent = `Could not play ${sound.label}.`;
+          activeAudio = null;
+        });
+      }
+
+      function render() {
+        for (const group of groups) {
+          const section = document.createElement("section");
+          section.className = "sound-group";
+          const title = document.createElement("h2");
+          title.textContent = group.name;
+          section.append(title);
+
+          for (const sound of group.sounds) {
+            const row = document.createElement("div");
+            row.className = "sound-row";
+
+            const meta = document.createElement("div");
+            meta.className = "sound-meta";
+
+            const name = document.createElement("span");
+            name.className = "sound-name";
+            name.textContent = sound.label;
+
+            const source = document.createElement("span");
+            source.className = "source";
+            source.textContent = sound.source;
+
+            const note = document.createElement("span");
+            note.className = "sound-note";
+            note.textContent = sound.note;
+
+            const button = document.createElement("button");
+            button.type = "button";
+            button.textContent = "PLAY";
+            button.addEventListener("click", () => playSound(sound));
+
+            meta.append(name, source, note);
+            row.append(meta, button);
+            section.append(row);
+          }
+
+          board.append(section);
+        }
+      }
+
+      stopEl.addEventListener("click", () => {
+        stopActive();
+        statusEl.textContent = "Stopped.";
+      });
+      volumeEl.addEventListener("input", () => {
+        if (activeAudio) activeAudio.volume = Number(volumeEl.value);
+      });
+      render();
+    </script>
+  </body>
+</html>
