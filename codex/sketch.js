@@ -34,7 +34,7 @@ const MUSIC_VOLUME = 0.32;
 const SOUND_EFFECTS = {
   jump: { src: "assets/audio/candidates/jump-select-003.wav", volume: 0.64 },
   collect: { src: "assets/audio/candidates/collect-select-006.wav", volume: 0.58 },
-  crash: { src: "assets/audio/candidates/death-impact-tin-medium-004.ogg", volume: 0.8 },
+  crash: { src: "assets/audio/candidates/crash-lose-trumpet.ogg", volume: 0.8 },
   start: { src: "assets/audio/candidates/ui-start-toggle-001.wav", volume: 0.56 }
 };
 
