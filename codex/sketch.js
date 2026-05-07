@@ -35,6 +35,7 @@ const MUSIC_VOLUME = 0.32;
 const SOUND_EFFECTS = {
   jump: { src: "assets/audio/candidates/jump-drop-001.wav", volume: 0.68 },
   collect: { src: "assets/audio/candidates/collect-select-006.wav", volume: 0.58 },
+  collectMilestone: { src: "assets/audio/candidates/collect-confirmation-002.wav", volume: 0.66 },
   crash: { src: "assets/audio/candidates/crash-lose-trumpet.ogg", volume: 0.8 },
   start: { src: "assets/audio/candidates/ui-start-toggle-001.wav", volume: 0.56 }
 };
@@ -99,6 +100,7 @@ function setup() {
         x: Math.round(obstacle.x),
         top: Math.round(obstacle.top),
         gap: Math.round(obstacle.gap),
+        faceScale: Number(collectibleFaceScale().toFixed(3)),
         collected: obstacle.collected
       })),
       player: {
@@ -223,6 +225,11 @@ function draw() {
   push();
   translate(fitX, fitY);
   scale(fitScale);
+  const clip = viewBounds();
+  drawingContext.save();
+  drawingContext.beginPath();
+  drawingContext.rect(0, clip.top, WORLD_W, clip.bottom - clip.top);
+  drawingContext.clip();
   drawBackdrop();
 
   if (state === "playing") {
@@ -246,6 +253,7 @@ function draw() {
   }
   drawGround();
   drawHud();
+  drawingContext.restore();
   pop();
 }
 
@@ -425,8 +433,9 @@ function spawnObstacle() {
 
 function collectFace(obstacle) {
   obstacle.collected = true;
-  playSfx("collect");
   score += 1;
+  const milestone = score % 10 === 0;
+  playSfx(milestone ? "collectMilestone" : "collect");
   bestScore = max(bestScore, score);
   localStorage.setItem("flappy-hippo-best", String(bestScore));
 
@@ -439,16 +448,29 @@ function collectFace(obstacle) {
   collectionEffects.push({
     x: faceX,
     y: faceY,
-    life: 34,
-    maxLife: 34
+    scale: milestone ? 1.75 : 1,
+    life: milestone ? 52 : 34,
+    maxLife: milestone ? 52 : 34
   });
-  burst(faceX, faceY, color(236, 248, 213), 12);
+  burst(
+    faceX,
+    faceY,
+    milestone ? color(255, 119, 194) : color(236, 248, 213),
+    milestone ? 26 : 12,
+    milestone ? 1.45 : 1,
+    milestone ? 1.35 : 1
+  );
 }
 
 function faceHalfCovered(obstacle) {
   const faceX = obstacle.x + obstacle.w * 0.5;
-  const playerFront = player.x + (PLAYER_BASE_W - PLAYER_ANCHOR_X) * player.scale - FACE_W * 0.5;
+  const faceScale = collectibleFaceScale();
+  const playerFront = player.x + (PLAYER_BASE_W - PLAYER_ANCHOR_X) * player.scale - (FACE_W * faceScale) * 0.5;
   return faceX < playerFront;
+}
+
+function collectibleFaceScale() {
+  return player ? max(1, player.targetScale) : 1;
 }
 
 function hitsAnyObstacle() {
@@ -574,7 +596,7 @@ function drawObstacle(obstacle, topPipeY) {
   drawPipe(obstacle.x, topPipeY, obstacle.w, obstacle.top - topPipeY, true);
   drawPipe(obstacle.x, bottomY, obstacle.w, GROUND_Y - bottomY, false);
   if (!obstacle.collected) {
-    drawCollectibleFace(obstacle.x + obstacle.w * 0.5, obstacle.top + obstacle.gap * 0.5);
+    drawCollectibleFace(obstacle.x + obstacle.w * 0.5, obstacle.top + obstacle.gap * 0.5, collectibleFaceScale());
   }
 }
 
@@ -612,9 +634,9 @@ function drawPipeLip(x, y, w, h) {
   rect(x, y + h - 7, w, 7);
 }
 
-function drawCollectibleFace(x, y) {
+function drawCollectibleFace(x, y, faceScale = 1) {
   imageMode(CENTER);
-  image(faceImg, x, y, FACE_W, FACE_H);
+  image(faceImg, x, y, FACE_W * faceScale, FACE_H * faceScale);
 }
 
 function buildFaceOutlineImage(radius) {
@@ -978,16 +1000,17 @@ function drawCollectionEffects() {
 function drawPickupHeart(effect) {
   const t = 1 - effect.life / effect.maxLife;
   const eased = easeOutCubic(t);
+  const effectScale = effect.scale || 1;
   const alpha = map(effect.life, 0, effect.maxLife, 0, 255);
-  const lift = 8 + eased * 32;
-  const wobble = sin((1 - effect.life / 5) * PI) * 4;
+  const lift = 8 + eased * (effectScale > 1 ? 42 : 32);
+  const wobble = sin((1 - effect.life / 5) * PI) * 4 * min(1.35, effectScale);
   const unit = lerp(3.2, 4.6, sin(t * PI));
   const heartColor = pickupColor(t, alpha);
   const plusColor = color(255, 246, 122, alpha);
 
   push();
   translate(effect.x + wobble, effect.y - lift);
-  scale(lerp(0.72, 1.18, sin(t * PI)));
+  scale(effectScale * lerp(0.72, 1.18, sin(t * PI)));
   drawPixelGlyph(PLUS_GLYPH, -15, -8, unit, color(0, alpha * 0.72));
   drawPixelGlyph(PLUS_GLYPH, -17, -10, unit, plusColor);
   drawPixelGlyph(HEART_GLYPH, 2, -10, unit, color(0, alpha * 0.72));
