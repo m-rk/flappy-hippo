@@ -22,6 +22,7 @@ const FACE_W = 52;
 const FACE_H = FACE_W * (FACE_SOURCE_H / FACE_SOURCE_W);
 
 const PLAYER_VELOCITY_MULT = 1.5;
+const JUMP_SIZE_PENALTY = 0.55;
 const GROWTH_BASE = 0.12;
 const GROWTH_FALLOFF = 0.6;
 const PIPE_GAP_MULT = 1.5;
@@ -32,7 +33,7 @@ const READY_PLAYER_Y = 318;
 const MUSIC_SRC = "assets/audio/mario-fart.mp3";
 const MUSIC_VOLUME = 0.32;
 const SOUND_EFFECTS = {
-  jump: { src: "assets/audio/candidates/jump-select-003.wav", volume: 0.64 },
+  jump: { src: "assets/audio/candidates/jump-bong-001.wav", volume: 0.68 },
   collect: { src: "assets/audio/candidates/collect-select-006.wav", volume: 0.58 },
   crash: { src: "assets/audio/candidates/crash-lose-trumpet.ogg", volume: 0.8 },
   start: { src: "assets/audio/candidates/ui-start-toggle-001.wav", volume: 0.56 }
@@ -358,7 +359,8 @@ function handleAction() {
 
 function flap(options = {}) {
   if (!options.silent) playSfx("jump");
-  player.vy = (-7.35 * PLAYER_VELOCITY_MULT) / max(1, player.scale);
+  const sizePenalty = 1 + max(0, player.scale - 1) * JUMP_SIZE_PENALTY;
+  player.vy = (-7.35 * PLAYER_VELOCITY_MULT) / sizePenalty;
   player.rot = -0.36;
   burst(player.x - 22, player.y + 18, color(236, 248, 213), 5);
 }

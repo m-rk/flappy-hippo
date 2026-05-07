@@ -9,8 +9,12 @@
 All candidate effect files are from Kenney audio packs released under Creative Commons CC0 1.0 Universal.
 
 - Kenney Interface Sounds: https://kenney.nl/assets/interface-sounds
+  - `candidates/jump-back-001.wav` from `back_001.wav`
   - `candidates/jump-bong-001.wav` from `bong_001.wav`
+  - `candidates/jump-drop-001.wav` from `drop_001.wav`
+  - `candidates/jump-drop-002.wav` from `drop_002.wav`
   - `candidates/jump-select-003.wav` from `select_003.wav`
+  - `candidates/jump-toggle-004.wav` from `toggle_004.wav`
   - `candidates/collect-confirmation-001.wav` from `confirmation_001.wav`
   - `candidates/collect-confirmation-002.wav` from `confirmation_002.wav`
   - `candidates/collect-select-006.wav` from `select_006.wav`
