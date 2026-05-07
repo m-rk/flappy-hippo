@@ -33,7 +33,7 @@ const READY_PLAYER_Y = 318;
 const MUSIC_SRC = "assets/audio/mario-fart.mp3";
 const MUSIC_VOLUME = 0.32;
 const SOUND_EFFECTS = {
-  jump: { src: "assets/audio/candidates/jump-bong-001.wav", volume: 0.68 },
+  jump: { src: "assets/audio/candidates/jump-drop-001.wav", volume: 0.68 },
   collect: { src: "assets/audio/candidates/collect-select-006.wav", volume: 0.58 },
   crash: { src: "assets/audio/candidates/crash-lose-trumpet.ogg", volume: 0.8 },
   start: { src: "assets/audio/candidates/ui-start-toggle-001.wav", volume: 0.56 }
