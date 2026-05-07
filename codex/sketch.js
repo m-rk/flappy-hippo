@@ -23,7 +23,8 @@ const FACE_H = FACE_W * (FACE_SOURCE_H / FACE_SOURCE_W);
 
 const PLAYER_VELOCITY_MULT = 1.5;
 const GROWTH_BASE = 0.09;
-const GROWTH_DECAY = 0.8;
+const GROWTH_DECAY = 0.88;
+const GROWTH_MAX = 0.38;
 const PIPE_GAP_MULT = 1.5;
 const BASE_SPEED = 2.08;
 const PIPE_W = 62;
@@ -429,7 +430,7 @@ function collectFace(obstacle) {
   localStorage.setItem("flappy-hippo-best", String(bestScore));
 
   const growth = GROWTH_BASE * pow(GROWTH_DECAY, score - 1);
-  player.growth = min(0.32, player.growth + growth);
+  player.growth = min(GROWTH_MAX, player.growth + growth);
   player.targetScale = 1 + player.growth;
 
   const faceX = obstacle.x + obstacle.w * 0.5;
