@@ -1,35 +1,7 @@
-:root {
-  color-scheme: light;
-  background: #7bc5cd;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-html,
-body {
-  width: 100%;
-  height: 100%;
+html, body {
   margin: 0;
-  overflow: hidden;
-  background: #7bc5cd;
-  font-family: "Courier New", ui-monospace, monospace;
+  padding: 0;
 }
-
-body {
-  touch-action: manipulation;
-  user-select: none;
-}
-
-#game-root {
-  width: 100vw;
-  height: 100dvh;
-}
-
 canvas {
   display: block;
-  width: 100vw;
-  height: 100dvh;
-  image-rendering: pixelated;
 }
