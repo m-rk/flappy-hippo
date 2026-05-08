@@ -39,16 +39,40 @@ const SOUND_EFFECTS = {
   crash: { src: "assets/audio/candidates/crash-lose-trumpet.ogg", volume: 0.8 },
   start: { src: "assets/audio/candidates/ui-start-toggle-001.wav", volume: 0.56 }
 };
+const SFX_POOL_SIZE = { jump: 3, collect: 2, collectMilestone: 2, crash: 2, start: 2 };
+const MOBILE_FRAME_RATE = 30;
+const DESKTOP_FRAME_RATE = 60;
+const MOBILE_PARTICLE_CAP = 70;
+const DESKTOP_PARTICLE_CAP = 160;
+const CLOUD_SPRITE_W = 172;
+const CLOUD_SPRITE_H = 82;
+const CLOUD_ORIGIN_X = 74;
+const CLOUD_ORIGIN_Y = 28;
+const RGB = {
+  mint: [236, 248, 213],
+  yellow: [255, 239, 87],
+  pink: [255, 119, 194],
+  green: [64, 196, 70],
+  gray: [91, 92, 95],
+  white: [255, 255, 255],
+  black: [0, 0, 0]
+};
 
 let fitScale = 1;
 let fitX = 0;
 let fitY = 0;
+let viewLeft = 0;
+let viewRight = WORLD_W;
+let viewTop = 0;
+let viewBottom = WORLD_H;
 let hippoFrames = [];
 let faceImg;
 let faceOutlineImg;
+let cloudSprite;
 let musicTrack = null;
 let musicStarted = false;
 let sfxTracks = {};
+let sfxCursors = {};
 let clouds = [];
 let obstacles = [];
 let particles = [];
@@ -66,6 +90,10 @@ let lowerCloudOffset = 0;
 let crashCooldown = 0;
 let crashUiFrame = 0;
 let lastActionFrame = -99;
+let performanceMode = false;
+let targetFrameMs = 1000 / DESKTOP_FRAME_RATE;
+let frameLoad = 1;
+let animationClock = 0;
 
 function preload() {
   for (let i = 1; i <= FRAME_COUNT; i += 1) {
@@ -78,12 +106,13 @@ function preload() {
 function setup() {
   const canvas = createCanvas(windowWidth, windowHeight);
   canvas.parent("game-root");
-  pixelDensity(Math.min(2, window.devicePixelRatio || 1));
+  configureCanvasPerformance();
   noSmooth();
   textFont('"Courier New", monospace');
   updateFit();
   bestScore = Number(localStorage.getItem("flappy-hippo-best") || 0);
   faceOutlineImg = buildFaceOutlineImage(4);
+  cloudSprite = buildCloudSprite();
   setupAudio();
   clouds = makeClouds();
   resetRun();
@@ -122,6 +151,12 @@ function setup() {
         musicStarted,
         sfxReady: Object.keys(sfxTracks)
       },
+      performance: {
+        mode: performanceMode ? "mobile" : "desktop",
+        targetFrameMs: Number(targetFrameMs.toFixed(2)),
+        frameLoad: Number(frameLoad.toFixed(2)),
+        pixelDensity: pixelDensity()
+      },
       frames: hippoFrames.length
     })
   };
@@ -129,37 +164,54 @@ function setup() {
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
+  configureCanvasPerformance();
   updateFit();
+}
+
+function configureCanvasPerformance() {
+  performanceMode = isMobilePerformanceTarget();
+  targetFrameMs = 1000 / (performanceMode ? MOBILE_FRAME_RATE : DESKTOP_FRAME_RATE);
+  pixelDensity(performanceMode ? 1 : Math.min(2, window.devicePixelRatio || 1));
+  frameRate(performanceMode ? MOBILE_FRAME_RATE : DESKTOP_FRAME_RATE);
+}
+
+function isMobilePerformanceTarget() {
+  const coarsePointer = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
+  const narrowScreen = min(windowWidth, windowHeight) <= 700;
+  return coarsePointer || narrowScreen;
 }
 
 function updateFit() {
   fitScale = Math.min(width / WORLD_W, height / WORLD_H);
   fitX = (width - WORLD_W * fitScale) / 2;
   fitY = (height - WORLD_H * fitScale) / 2;
-}
-
-function viewBounds() {
-  return {
-    left: -fitX / fitScale,
-    right: (width - fitX) / fitScale,
-    top: -fitY / fitScale,
-    bottom: (height - fitY) / fitScale
-  };
+  viewLeft = -fitX / fitScale;
+  viewRight = (width - fitX) / fitScale;
+  viewTop = -fitY / fitScale;
+  viewBottom = (height - fitY) / fitScale;
 }
 
 function setupAudio() {
   if (typeof Audio === "undefined") return;
-  musicTrack = new Audio(MUSIC_SRC);
+  musicTrack = new Audio();
   musicTrack.loop = true;
-  musicTrack.preload = "auto";
+  musicTrack.preload = "none";
   musicTrack.volume = MUSIC_VOLUME;
+  musicTrack.src = MUSIC_SRC;
 
   sfxTracks = {};
+  sfxCursors = {};
   for (const [name, config] of Object.entries(SOUND_EFFECTS)) {
-    const track = new Audio(config.src);
-    track.preload = "auto";
-    track.volume = config.volume;
-    sfxTracks[name] = track;
+    const pool = [];
+    const poolSize = SFX_POOL_SIZE[name] || 2;
+    for (let i = 0; i < poolSize; i += 1) {
+      const track = new Audio(config.src);
+      track.preload = "auto";
+      track.volume = config.volume;
+      pool.push(track);
+    }
+    sfxTracks[name] = pool;
+    sfxCursors[name] = 0;
   }
 }
 
@@ -184,11 +236,18 @@ function startMusic() {
 }
 
 function playSfx(name) {
-  const baseTrack = sfxTracks[name];
-  if (!baseTrack) return;
+  const pool = sfxTracks[name];
+  if (!pool || pool.length === 0) return;
 
-  const track = baseTrack.cloneNode();
-  track.volume = baseTrack.volume;
+  const index = sfxCursors[name] % pool.length;
+  sfxCursors[name] = index + 1;
+  const track = pool[index];
+  track.pause();
+  try {
+    track.currentTime = 0;
+  } catch (error) {
+    // Some mobile browsers reject seeks before metadata is ready; play from current position instead.
+  }
   const playAttempt = track.play();
   if (playAttempt && typeof playAttempt.catch === "function") {
     playAttempt.catch(() => {});
@@ -220,15 +279,15 @@ function resetRun() {
 
 function draw() {
   drawingContext.imageSmoothingEnabled = false;
+  updateFrameLoad();
   background(123, 197, 205);
 
   push();
   translate(fitX, fitY);
   scale(fitScale);
-  const clip = viewBounds();
   drawingContext.save();
   drawingContext.beginPath();
-  drawingContext.rect(0, clip.top, WORLD_W, clip.bottom - clip.top);
+  drawingContext.rect(0, viewTop, WORLD_W, viewBottom - viewTop);
   drawingContext.clip();
   drawBackdrop();
 
@@ -257,15 +316,34 @@ function draw() {
   pop();
 }
 
+function updateFrameLoad() {
+  const frameMs = deltaTime || targetFrameMs;
+  frameLoad = lerp(frameLoad, frameMs / targetFrameMs, 0.08);
+  animationClock += frameStepScale();
+}
+
+function frameStepScale() {
+  return performanceMode ? DESKTOP_FRAME_RATE / MOBILE_FRAME_RATE : 1;
+}
+
 function updateReady() {
-  player.y = READY_PLAYER_Y + sin(frameCount * 0.08) * 9;
-  player.vy = sin(frameCount * 0.08) * 0.85;
-  player.rot = sin(frameCount * 0.07) * 0.05;
+  const t = animationClock;
+  const step = frameStepScale();
+  player.y = READY_PLAYER_Y + sin(t * 0.08) * 9;
+  player.vy = sin(t * 0.08) * 0.85;
+  player.rot = sin(t * 0.07) * 0.05;
   player.scale = lerp(player.scale, player.targetScale, 0.12);
-  groundOffset = (groundOffset + 0.45) % 48;
+  groundOffset = (groundOffset + 0.45 * step) % 48;
 }
 
 function updatePlaying() {
+  const steps = Math.max(1, Math.round(frameStepScale()));
+  for (let i = 0; i < steps && state === "playing"; i += 1) {
+    updatePlayingStep();
+  }
+}
+
+function updatePlayingStep() {
   const speed = currentSpeed();
   groundOffset = (groundOffset + speed) % 48;
   player.scale = lerp(player.scale, player.targetScale, 0.12);
@@ -286,16 +364,28 @@ function updatePlaying() {
       collectFace(obstacle);
     }
   }
-  obstacles = obstacles.filter((obstacle) => obstacle.x > -120);
+  compactObstacles();
 
   if (hitsAnyObstacle() || player.y + PLAYER_GROUND_RADIUS * player.scale >= GROUND_Y || player.y < 18) {
     crash();
   }
 }
 
+function compactObstacles() {
+  let write = 0;
+  for (let i = 0; i < obstacles.length; i += 1) {
+    if (obstacles[i].x > -120) {
+      obstacles[write] = obstacles[i];
+      write += 1;
+    }
+  }
+  obstacles.length = write;
+}
+
 function updateCrash() {
-  crashCooldown = max(0, crashCooldown - 1);
-  crashUiFrame += 1;
+  const step = frameStepScale();
+  crashCooldown = max(0, crashCooldown - step);
+  crashUiFrame += step;
 }
 
 function updateDying() {
@@ -304,7 +394,7 @@ function updateDying() {
     return;
   }
 
-  deathEffect.life -= 1;
+  deathEffect.life -= frameStepScale();
   const age = deathEffect.maxLife - deathEffect.life;
   if (!deathEffect.burstDone && age >= 12) {
     deathEffect.burstDone = true;
@@ -312,7 +402,7 @@ function updateDying() {
     burst(
       deathEffect.x,
       deathEffect.y,
-      color(255, 239, 87),
+      RGB.yellow,
       Math.round(20 * deathEffect.scale),
       1.2 + deathEffect.scale * 0.35,
       0.9 + deathEffect.scale * 0.45
@@ -320,7 +410,7 @@ function updateDying() {
     burst(
       deathEffect.x + 8 * deathEffect.scale,
       deathEffect.y - 5 * deathEffect.scale,
-      color(236, 248, 213),
+      RGB.mint,
       Math.round(14 * deathEffect.scale),
       1.1 + deathEffect.scale * 0.25,
       0.8 + deathEffect.scale * 0.35
@@ -370,7 +460,7 @@ function flap(options = {}) {
   const sizePenalty = 1 + max(0, player.scale - 1) * JUMP_SIZE_PENALTY;
   player.vy = (-7.35 * PLAYER_VELOCITY_MULT) / sizePenalty;
   player.rot = -0.36;
-  burst(player.x - 22, player.y + 18, color(236, 248, 213), 5);
+  burst(player.x - 22, player.y + 18, RGB.mint, 5);
 }
 
 function crash() {
@@ -379,7 +469,7 @@ function crash() {
   const popScale = player.scale;
   const popX = player.x;
   const popY = constrain(player.y, 30, GROUND_Y - PLAYER_GROUND_RADIUS * popScale);
-  const frameIdx = Math.floor(frameCount / 3) % hippoFrames.length;
+  const frameIdx = Math.floor(animationClock / 3) % hippoFrames.length;
 
   player.y = popY;
   player.vy = 0;
@@ -455,7 +545,7 @@ function collectFace(obstacle) {
   burst(
     faceX,
     faceY,
-    milestone ? color(255, 119, 194) : color(236, 248, 213),
+    milestone ? RGB.pink : RGB.mint,
     milestone ? 26 : 12,
     milestone ? 1.45 : 1,
     milestone ? 1.35 : 1
@@ -474,52 +564,39 @@ function collectibleFaceScale() {
 }
 
 function hitsAnyObstacle() {
-  const h = hitbox();
+  const hx = player.x - PLAYER_HIT_W * player.scale * 0.55;
+  const hy = player.y - PLAYER_HIT_H * player.scale * 0.52;
+  const hw = PLAYER_HIT_W * player.scale;
+  const hh = PLAYER_HIT_H * player.scale;
   for (const obstacle of obstacles) {
     const bottomY = obstacle.top + obstacle.gap;
-    const topRects = [
-      { x: obstacle.x, y: -40, w: obstacle.w, h: obstacle.top - PIPE_LIP_H + 40 },
-      { x: obstacle.x - 8, y: obstacle.top - PIPE_LIP_H, w: obstacle.w + 16, h: PIPE_LIP_H }
-    ];
-    const bottomRects = [
-      { x: obstacle.x - 8, y: bottomY, w: obstacle.w + 16, h: PIPE_LIP_H },
-      { x: obstacle.x, y: bottomY + PIPE_LIP_H, w: obstacle.w, h: GROUND_Y - bottomY - PIPE_LIP_H }
-    ];
-    for (const rect of topRects.concat(bottomRects)) {
-      if (overlaps(h, rect)) return true;
-    }
+    if (overlapsRect(hx, hy, hw, hh, obstacle.x, -40, obstacle.w, obstacle.top - PIPE_LIP_H + 40)) return true;
+    if (overlapsRect(hx, hy, hw, hh, obstacle.x - 8, obstacle.top - PIPE_LIP_H, obstacle.w + 16, PIPE_LIP_H)) return true;
+    if (overlapsRect(hx, hy, hw, hh, obstacle.x - 8, bottomY, obstacle.w + 16, PIPE_LIP_H)) return true;
+    if (overlapsRect(hx, hy, hw, hh, obstacle.x, bottomY + PIPE_LIP_H, obstacle.w, GROUND_Y - bottomY - PIPE_LIP_H)) return true;
   }
   return false;
 }
 
-function hitbox() {
-  return {
-    x: player.x - PLAYER_HIT_W * player.scale * 0.55,
-    y: player.y - PLAYER_HIT_H * player.scale * 0.52,
-    w: PLAYER_HIT_W * player.scale,
-    h: PLAYER_HIT_H * player.scale
-  };
-}
-
-function overlaps(a, b) {
-  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+function overlapsRect(ax, ay, aw, ah, bx, by, bw, bh) {
+  return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
 }
 
 function drawBackdrop() {
-  const view = viewBounds();
+  const step = frameStepScale();
   noStroke();
   fill(123, 197, 205);
-  rect(view.left, view.top, view.right - view.left, view.bottom - view.top);
+  rect(viewLeft, viewTop, viewRight - viewLeft, viewBottom - viewTop);
 
-  cloudOffset += state === "playing" ? 0.27 : 0.1;
-  lowerCloudOffset += lowerCloudAdvance();
+  cloudOffset += (state === "playing" ? 0.27 : 0.1) * step;
+  lowerCloudOffset += lowerCloudAdvance() * step;
   for (const cloud of clouds) {
-    const x = wrap(cloud.x - cloudOffset * cloud.speed, view.left - 110, view.right + 110);
+    const x = wrap(cloud.x - cloudOffset * cloud.speed, viewLeft - 110, viewRight + 110);
     drawPixelCloud(x, cloud.y, cloud.s);
   }
 
-  drawLowerCloudLayer(view, GROUND_Y - 76, 0.78, 0.23, 126, 0, 206);
-  drawLowerCloudLayer(view, GROUND_Y - 52, 1, 0.46, 98, 35, 244);
+  drawLowerCloudLayer(GROUND_Y - 76, 0.78, 0.23, 126, 0, 206);
+  drawLowerCloudLayer(GROUND_Y - 52, 1, 0.46, 98, 35, 244);
 }
 
 function lowerCloudAdvance() {
@@ -538,16 +615,12 @@ function makeClouds() {
 }
 
 function drawPixelCloud(x, y, s) {
-  push();
-  translate(x, y);
-  scale(s);
-  drawCloudPuffs(0, 0, 1, 245);
-  pop();
+  drawCloudPuffs(x, y, s, 245);
 }
 
-function drawLowerCloudLayer(view, y, s, speed, spacing, phase, alpha) {
-  const left = view.left - 150;
-  const right = view.right + 150;
+function drawLowerCloudLayer(y, s, speed, spacing, phase, alpha) {
+  const left = viewLeft - 150;
+  const right = viewRight + 150;
   const offset = wrap(lowerCloudOffset * speed + phase, 0, spacing);
 
   for (let x = left - offset; x < right; x += spacing) {
@@ -556,36 +629,51 @@ function drawLowerCloudLayer(view, y, s, speed, spacing, phase, alpha) {
 }
 
 function drawBottomCloud(x, y, s, alpha) {
-  push();
-  translate(x, y);
-  scale(s);
-  drawCloudPuffs(0, 0, 1.25, alpha);
-  pop();
+  drawCloudPuffs(x, y, s * 1.25, alpha);
 }
 
 function drawCloudPuffs(x, y, s, alpha) {
+  if (!cloudSprite) return;
   push();
-  translate(x, y);
-  scale(s);
-  noStroke();
-  fill(218, 246, 207, alpha * 0.82);
-  ellipse(-42, 20, 58, 34);
-  ellipse(26, 22, 88, 38);
-  ellipse(70, 26, 48, 24);
-  fill(232, 250, 219, alpha);
-  ellipse(-22, 14, 62, 40);
-  ellipse(20, 1, 76, 54);
-  ellipse(62, 17, 58, 36);
-  rect(-54, 19, 130, 26);
-  fill(244, 254, 232, alpha * 0.62);
-  ellipse(4, -4, 44, 30);
-  ellipse(45, 14, 38, 22);
+  imageMode(CORNER);
+  tint(255, alpha);
+  image(
+    cloudSprite,
+    x - CLOUD_ORIGIN_X * s,
+    y - CLOUD_ORIGIN_Y * s,
+    CLOUD_SPRITE_W * s,
+    CLOUD_SPRITE_H * s
+  );
+  noTint();
   pop();
 }
 
+function buildCloudSprite() {
+  const sprite = createGraphics(CLOUD_SPRITE_W, CLOUD_SPRITE_H);
+  sprite.pixelDensity(1);
+  sprite.noSmooth();
+  sprite.clear();
+  sprite.push();
+  sprite.translate(CLOUD_ORIGIN_X, CLOUD_ORIGIN_Y);
+  sprite.noStroke();
+  sprite.fill(218, 246, 207, 209);
+  sprite.ellipse(-42, 20, 58, 34);
+  sprite.ellipse(26, 22, 88, 38);
+  sprite.ellipse(70, 26, 48, 24);
+  sprite.fill(232, 250, 219, 255);
+  sprite.ellipse(-22, 14, 62, 40);
+  sprite.ellipse(20, 1, 76, 54);
+  sprite.ellipse(62, 17, 58, 36);
+  sprite.rect(-54, 19, 130, 26);
+  sprite.fill(244, 254, 232, 158);
+  sprite.ellipse(4, -4, 44, 30);
+  sprite.ellipse(45, 14, 38, 22);
+  sprite.pop();
+  return sprite;
+}
+
 function drawObstacles() {
-  const view = viewBounds();
-  const topPipeY = min(-160, view.top - 120);
+  const topPipeY = min(-160, viewTop - 120);
   for (const obstacle of obstacles) {
     drawObstacle(obstacle, topPipeY);
   }
@@ -685,7 +773,7 @@ function buildFaceOutlineImage(radius) {
 
 function drawHippo() {
   const frameStep = state === "ready" ? 4 : 3;
-  const idx = Math.floor(frameCount / frameStep) % hippoFrames.length;
+  const idx = Math.floor(animationClock / frameStep) % hippoFrames.length;
   const img = hippoFrames[idx];
   const w = PLAYER_BASE_W * player.scale;
   const h = PLAYER_BASE_H * player.scale;
@@ -749,16 +837,15 @@ function drawFacePopOutline(x, y, faceScale, alpha, popScale) {
 }
 
 function drawGround() {
-  const view = viewBounds();
-  const left = view.left - 80;
-  const right = view.right + 80;
+  const left = viewLeft - 80;
+  const right = viewRight + 80;
   const widthToFill = right - left;
 
   noStroke();
   fill(0);
   rect(left, GROUND_Y - 1, widthToFill, 5);
   fill(140, 231, 83);
-  rect(left, GROUND_Y + 4, widthToFill, view.bottom - GROUND_Y);
+  rect(left, GROUND_Y + 4, widthToFill, viewBottom - GROUND_Y);
   fill(74, 180, 61);
   rect(left, GROUND_Y + 4, widthToFill, 7);
 
@@ -896,8 +983,23 @@ function drawBitmapTextLayer(label, x, y, unit, fillColor) {
   }
 }
 
+function particleCap() {
+  return performanceMode ? MOBILE_PARTICLE_CAP : DESKTOP_PARTICLE_CAP;
+}
+
+function effectScale() {
+  const base = performanceMode ? 0.68 : 1;
+  if (frameLoad > 1.35) return base * 0.55;
+  if (frameLoad > 1.15) return base * 0.75;
+  return base;
+}
+
 function burst(x, y, c, count, power = 1, sizeScale = 1) {
-  for (let i = 0; i < count; i += 1) {
+  const cap = particleCap();
+  if (particles.length >= cap) return;
+
+  const actualCount = min(cap - particles.length, max(1, Math.round(count * effectScale())));
+  for (let i = 0; i < actualCount; i += 1) {
     const life = random(18, 34) * constrain(sizeScale, 0.8, 1.8);
     particles.push({
       x,
@@ -914,15 +1016,16 @@ function burst(x, y, c, count, power = 1, sizeScale = 1) {
 
 function makeDeathPieces(x, y, popScale, faceScore) {
   const palette = [
-    color(236, 248, 213),
-    color(255, 239, 87),
-    color(64, 196, 70),
-    color(91, 92, 95),
-    color(255),
-    color(0)
+    RGB.mint,
+    RGB.yellow,
+    RGB.green,
+    RGB.gray,
+    RGB.white,
+    RGB.black
   ];
   const faceCount = max(0, floor(faceScore || 0));
-  const count = Math.round(24 + 18 * popScale) + faceCount;
+  const extraPieces = Math.round((performanceMode ? 12 : 24) + (performanceMode ? 8 : 18) * popScale);
+  const count = extraPieces + faceCount;
 
   deathPieces = [];
   for (let i = 0; i < count; i += 1) {
@@ -946,12 +1049,14 @@ function makeDeathPieces(x, y, popScale, faceScore) {
 }
 
 function drawDeathPieces() {
+  const step = frameStepScale();
+  let write = 0;
   for (const piece of deathPieces) {
-    piece.x += piece.vx;
-    piece.y += piece.vy;
-    piece.vy += 0.15;
-    piece.rot += piece.vr;
-    piece.life -= 1;
+    piece.x += piece.vx * step;
+    piece.y += piece.vy * step;
+    piece.vy += 0.15 * step;
+    piece.rot += piece.vr * step;
+    piece.life -= step;
 
     const alpha = map(piece.life, 0, piece.maxLife, 0, 255);
     push();
@@ -966,35 +1071,51 @@ function drawDeathPieces() {
     } else {
       rectMode(CENTER);
       noStroke();
-      fill(red(piece.c), green(piece.c), blue(piece.c), alpha);
+      fill(piece.c[0], piece.c[1], piece.c[2], alpha);
       rect(0, 0, piece.size, piece.size);
       rectMode(CORNER);
     }
     pop();
+    if (piece.life > 0) {
+      deathPieces[write] = piece;
+      write += 1;
+    }
   }
-  deathPieces = deathPieces.filter((piece) => piece.life > 0);
+  deathPieces.length = write;
 }
 
 function updateParticles() {
+  const step = frameStepScale();
+  let write = 0;
   for (const p of particles) {
-    p.x += p.vx;
-    p.y += p.vy;
-    p.vy += 0.16;
-    p.life -= 1;
+    p.x += p.vx * step;
+    p.y += p.vy * step;
+    p.vy += 0.16 * step;
+    p.life -= step;
     const alpha = map(p.life, 0, p.maxLife, 0, 255);
-    fill(red(p.c), green(p.c), blue(p.c), alpha);
+    fill(p.c[0], p.c[1], p.c[2], alpha);
     noStroke();
     rect(p.x, p.y, p.size, p.size);
+    if (p.life > 0) {
+      particles[write] = p;
+      write += 1;
+    }
   }
-  particles = particles.filter((p) => p.life > 0);
+  particles.length = write;
 }
 
 function drawCollectionEffects() {
+  const step = frameStepScale();
+  let write = 0;
   for (const effect of collectionEffects) {
     drawPickupHeart(effect);
-    effect.life -= 1;
+    effect.life -= step;
+    if (effect.life > 0) {
+      collectionEffects[write] = effect;
+      write += 1;
+    }
   }
-  collectionEffects = collectionEffects.filter((effect) => effect.life > 0);
+  collectionEffects.length = write;
 }
 
 function drawPickupHeart(effect) {
