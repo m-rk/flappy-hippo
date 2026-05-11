@@ -36,10 +36,12 @@ const SOUND_EFFECTS = {
   jump: { src: "assets/audio/candidates/jump-drop-001.wav", volume: 0.68 },
   collect: { src: "assets/audio/candidates/collect-select-006.wav", volume: 0.58 },
   collectMilestone: { src: "assets/audio/candidates/collect-confirmation-002.wav", volume: 0.66 },
-  crash: { src: "assets/audio/candidates/crash-lose-trumpet.ogg", volume: 0.8 },
+  crash: { src: "assets/audio/candidates/crash-gameover-greyfrog.mp3", volume: 0.8 },
   start: { src: "assets/audio/candidates/ui-start-toggle-001.wav", volume: 0.56 }
 };
 const SFX_POOL_SIZE = { jump: 3, collect: 2, collectMilestone: 2, crash: 2, start: 2 };
+const SFX_LITE_INTERVALS = { jump: 140, collect: 90, collectMilestone: 0, crash: 0, start: 0 };
+const SFX_START_WAIT_MS = 1600;
 const MOBILE_FRAME_RATE = 30;
 const DESKTOP_FRAME_RATE = 60;
 const MOBILE_PARTICLE_CAP = 70;
@@ -50,7 +52,7 @@ const CLOUD_ORIGIN_X = 74;
 const CLOUD_ORIGIN_Y = 28;
 const TROUBLESHOOT_STORAGE_KEY = "flappy-hippo-troubleshoot-session";
 const OPTIONS_BUTTON = { x: WORLD_W - 52, y: 24, w: 36, h: 32 };
-const OPTIONS_PANEL = { x: 20, y: 224, w: 350, h: 322 };
+const OPTIONS_PANEL = { x: 20, y: 184, w: 350, h: 386 };
 const OPTION_ROWS = [
   { key: "sixtyFps", label: "60 FPS" },
   { key: "sharpCanvas", label: "sharp canvas" },
@@ -60,7 +62,9 @@ const OPTION_ROWS = [
   { key: "collectionEffects", label: "collect popups" },
   { key: "deathPieces", label: "death burst" },
   { key: "playerAnimation", label: "hippo animation" },
-  { key: "audio", label: "audio" }
+  { key: "music", label: "music" },
+  { key: "soundEffects", label: "sound effects" },
+  { key: "sfxLite", label: "SFX lite" }
 ];
 const DEFAULT_TROUBLESHOOT_OPTIONS = {
   sixtyFps: true,
@@ -71,7 +75,9 @@ const DEFAULT_TROUBLESHOOT_OPTIONS = {
   collectionEffects: true,
   deathPieces: true,
   playerAnimation: true,
-  audio: true
+  music: true,
+  soundEffects: true,
+  sfxLite: false
 };
 const RGB = {
   mint: [236, 248, 213],
@@ -96,8 +102,15 @@ let faceOutlineImg;
 let cloudSprite;
 let musicTrack = null;
 let musicStarted = false;
+let audioContext = null;
+let sfxMasterGain = null;
+let sfxBuffers = {};
+let sfxBufferPromises = {};
+let sfxPreloadStarted = false;
+let sfxBackend = "none";
 let sfxTracks = {};
 let sfxCursors = {};
+let lastSfxTimes = {};
 let clouds = [];
 let obstacles = [];
 let particles = [];
@@ -124,6 +137,8 @@ let buildStamp = "";
 let optionsPanelOpen = false;
 let lastPointerFrame = -99;
 let troubleshootOptions = { ...DEFAULT_TROUBLESHOOT_OPTIONS };
+let pendingStartAfterSfx = false;
+let pendingStartToken = 0;
 
 function preload() {
   for (let i = 1; i <= FRAME_COUNT; i += 1) {
@@ -239,7 +254,9 @@ function applyLowEffectsPreset() {
     collectionEffects: false,
     deathPieces: false,
     playerAnimation: false,
-    audio: false
+    music: true,
+    soundEffects: false,
+    sfxLite: true
   };
   saveTroubleshootOptions();
   applyTroubleshootSideEffects("preset");
@@ -252,8 +269,8 @@ function resetTroubleshootOptions() {
 }
 
 function applyTroubleshootSideEffects(key) {
-  if (key === "audio" || key === "preset") {
-    stopAudioIfDisabled();
+  if (key === "music" || key === "soundEffects" || key === "preset" || key === "reset") {
+    applyAudioOptions();
   }
   if (key === "sharpCanvas" || key === "sixtyFps" || key === "preset" || key === "reset") {
     configureCanvasPerformance();
@@ -269,14 +286,22 @@ function applyTroubleshootSideEffects(key) {
   }
 }
 
-function stopAudioIfDisabled() {
-  if (optionEnabled("audio")) return;
-  musicStarted = false;
-  if (musicTrack) musicTrack.pause();
+function applyAudioOptions() {
+  if (!optionEnabled("music")) {
+    musicStarted = false;
+    if (musicTrack) musicTrack.pause();
+  }
+  if (!optionEnabled("soundEffects")) {
+    silenceSfx();
+  } else if (sfxMasterGain) {
+    sfxMasterGain.gain.value = 1;
+  }
+}
+
+function silenceSfx() {
+  if (sfxMasterGain) sfxMasterGain.gain.value = 0;
   for (const pool of Object.values(sfxTracks)) {
-    for (const track of pool) {
-      track.pause();
-    }
+    for (const track of pool) track.pause();
   }
 }
 
@@ -316,7 +341,8 @@ function gameSnapshot() {
     audio: {
       musicReady: Boolean(musicTrack),
       musicStarted,
-      sfxReady: Object.keys(sfxTracks)
+      sfxBackend,
+      sfxReady: Object.keys(SOUND_EFFECTS).filter((name) => sfxBuffers[name] || sfxTracks[name])
     },
     performance: {
       mode: performanceMode ? "mobile" : "desktop",
@@ -517,13 +543,39 @@ function updateFit() {
 }
 
 function setupAudio() {
+  setupMusicTrack();
+  setupSfxAudio();
+}
+
+function setupMusicTrack() {
   if (typeof Audio === "undefined") return;
   musicTrack = new Audio();
   musicTrack.loop = true;
   musicTrack.preload = "none";
   musicTrack.volume = MUSIC_VOLUME;
   musicTrack.src = MUSIC_SRC;
+}
 
+function setupSfxAudio() {
+  sfxBuffers = {};
+  sfxBufferPromises = {};
+  lastSfxTimes = {};
+  sfxBackend = "none";
+  const context = getAudioContext();
+  if (context) {
+    sfxBackend = "webaudio";
+    sfxMasterGain = context.createGain();
+    sfxMasterGain.gain.value = optionEnabled("soundEffects") ? 1 : 0;
+    sfxMasterGain.connect(context.destination);
+    preloadSfxBuffers();
+    return;
+  }
+  setupFallbackSfxTracks();
+}
+
+function setupFallbackSfxTracks() {
+  if (typeof Audio === "undefined") return;
+  sfxBackend = "htmlaudio";
   sfxTracks = {};
   sfxCursors = {};
   for (const [name, config] of Object.entries(SOUND_EFFECTS)) {
@@ -540,8 +592,81 @@ function setupAudio() {
   }
 }
 
+function getAudioContext() {
+  if (typeof window === "undefined") return null;
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return null;
+  if (!audioContext) {
+    try {
+      audioContext = new AudioContextClass();
+    } catch (error) {
+      audioContext = null;
+    }
+  }
+  return audioContext;
+}
+
+function preloadSfxBuffers() {
+  if (sfxPreloadStarted || sfxBackend !== "webaudio" || typeof fetch !== "function") return;
+  sfxPreloadStarted = true;
+  const context = getAudioContext();
+  if (!context) return;
+
+  for (const [name, config] of Object.entries(SOUND_EFFECTS)) {
+    sfxBufferPromises[name] = fetch(config.src)
+      .then((response) => response.arrayBuffer())
+      .then((data) => decodeAudioBuffer(context, data))
+      .then((buffer) => {
+        sfxBuffers[name] = buffer;
+        return buffer;
+      })
+      .catch(() => null);
+  }
+}
+
+function decodeAudioBuffer(context, data) {
+  return new Promise((resolve, reject) => {
+    const decodeResult = context.decodeAudioData(data, resolve, reject);
+    if (decodeResult && typeof decodeResult.then === "function") {
+      decodeResult.then(resolve).catch(reject);
+    }
+  });
+}
+
+function unlockSfxAudio() {
+  if (!optionEnabled("soundEffects")) return;
+  preloadSfxBuffers();
+  const context = getAudioContext();
+  if (context && context.state === "suspended") {
+    context.resume().catch(() => {});
+  }
+  if (sfxMasterGain) sfxMasterGain.gain.value = 1;
+}
+
+function sfxReadyForPlay() {
+  if (!optionEnabled("soundEffects") || sfxBackend !== "webaudio") return true;
+  return Object.keys(SOUND_EFFECTS).every((name) => Boolean(sfxBuffers[name]));
+}
+
+function prepareSfxBeforeStart() {
+  if (sfxReadyForPlay()) return false;
+  pendingStartAfterSfx = true;
+  pendingStartToken += 1;
+  const token = pendingStartToken;
+  unlockSfxAudio();
+  const loads = Object.values(sfxBufferPromises);
+  Promise.all(loads).finally(() => completePendingSfxStart(token));
+  setTimeout(() => completePendingSfxStart(token), SFX_START_WAIT_MS);
+  return true;
+}
+
+function completePendingSfxStart(token) {
+  if (!pendingStartAfterSfx || token !== pendingStartToken || state !== "ready") return;
+  startReadyRun();
+}
+
 function startMusic() {
-  if (!optionEnabled("audio")) return;
+  if (!optionEnabled("music")) return;
   if (!musicTrack || !musicTrack.paused) {
     musicStarted = Boolean(musicTrack);
     return;
@@ -562,7 +687,43 @@ function startMusic() {
 }
 
 function playSfx(name) {
-  if (!optionEnabled("audio")) return;
+  if (!optionEnabled("soundEffects") || shouldSkipSfx(name)) return;
+  if (playWebAudioSfx(name)) return;
+  if (sfxBackend === "webaudio") return;
+  playFallbackSfx(name);
+}
+
+function shouldSkipSfx(name) {
+  if (!optionEnabled("sfxLite")) return false;
+  const interval = SFX_LITE_INTERVALS[name] || 0;
+  if (interval <= 0) return false;
+  const now = typeof millis === "function" ? millis() : performance.now();
+  const last = lastSfxTimes[name] || -Infinity;
+  if (now - last < interval) return true;
+  lastSfxTimes[name] = now;
+  return false;
+}
+
+function playWebAudioSfx(name) {
+  const context = getAudioContext();
+  const buffer = sfxBuffers[name];
+  if (!context || !buffer || !sfxMasterGain) return false;
+
+  const source = context.createBufferSource();
+  const gain = context.createGain();
+  source.buffer = buffer;
+  gain.gain.value = SOUND_EFFECTS[name]?.volume ?? 1;
+  source.connect(gain);
+  gain.connect(sfxMasterGain);
+  try {
+    source.start();
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+function playFallbackSfx(name) {
   const pool = sfxTracks[name];
   if (!pool || pool.length === 0) return;
 
@@ -768,12 +929,11 @@ function handleAction() {
   if (frameCount === lastActionFrame) return;
   lastActionFrame = frameCount;
   startMusic();
+  unlockSfxAudio();
 
   if (state === "ready") {
-    playSfx("start");
-    resetRun();
-    state = "playing";
-    flap({ silent: true });
+    if (prepareSfxBeforeStart()) return;
+    startReadyRun();
     return;
   }
 
@@ -788,6 +948,14 @@ function handleAction() {
     state = "playing";
     flap({ silent: true });
   }
+}
+
+function startReadyRun() {
+  pendingStartAfterSfx = false;
+  playSfx("start");
+  resetRun();
+  state = "playing";
+  flap({ silent: true });
 }
 
 function flap(options = {}) {
@@ -1301,7 +1469,7 @@ function drawHud() {
   if (state === "ready") {
     drawBitmapText("FLAPPY", WORLD_W / 2, 142, 7, color(255, 239, 87));
     drawBitmapText("HIPPO", WORLD_W / 2, 202, 7, color(255, 239, 87));
-    drawCanvasButton(WORLD_W / 2, 430, "START");
+    drawCanvasButton(WORLD_W / 2, 430, pendingStartAfterSfx ? "SOUND" : "START");
     drawOptionsButton();
     drawBuildStamp();
     if (optionsPanelOpen) drawOptionsPanel();

@@ -167,6 +167,7 @@ async function runPerfScenario(browser, port, run) {
     null,
     { timeout: 15000 }
   );
+  await waitForSfxReady(page);
 
   await page.waitForTimeout(options.warmup);
   await page.evaluate(startPerfScenario, scenarioOptions(options));
@@ -282,6 +283,7 @@ async function runCollectionStressScenario(browser, port, run) {
     null,
     { timeout: 15000 }
   );
+  await waitForSfxReady(page);
 
   await page.waitForTimeout(options.warmup);
   await page.evaluate(startCollectionStressScenario, scenarioOptions(options));
@@ -421,6 +423,22 @@ async function runCollectionStressScenario(browser, port, run) {
   };
 }
 
+async function waitForSfxReady(page) {
+  await page
+    .waitForFunction(
+      () => {
+        const api = window.__FLAPPY_HIPPO_GAME__;
+        if (!api?.snapshot) return false;
+        const audio = api.snapshot().audio || {};
+        if (audio.sfxBackend !== "webaudio") return true;
+        return Array.isArray(audio.sfxReady) && audio.sfxReady.length >= 5;
+      },
+      null,
+      { timeout: 8000 }
+    )
+    .catch(() => {});
+}
+
 async function runPublicStartScenario(browser, port, run) {
   const context = await browser.newContext({
     viewport: { width: options.width, height: options.height },
@@ -447,6 +465,7 @@ async function runPublicStartScenario(browser, port, run) {
     null,
     { timeout: 15000 }
   );
+  await waitForSfxReady(page);
   await page.waitForTimeout(options.warmup);
 
   const before = await page.evaluate(publicPageState);
@@ -455,7 +474,9 @@ async function runPublicStartScenario(browser, port, run) {
   } else {
     await page.mouse.click(Math.floor(options.width / 2), Math.floor(options.height / 2));
   }
-  await page.waitForTimeout(800);
+  await page
+    .waitForFunction(() => window.__FLAPPY_HIPPO_GAME__.snapshot().state === "playing", null, { timeout: 2500 })
+    .catch(() => {});
   const after = await page.evaluate(publicPageState);
   await context.close();
 
