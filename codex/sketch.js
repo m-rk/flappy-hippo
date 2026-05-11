@@ -118,48 +118,131 @@ function setup() {
   resetRun();
   state = "ready";
 
-  window.__FLAPPY_HIPPO_GAME__ = {
+  window.__FLAPPY_HIPPO_GAME__ = makeGameApi();
+}
+
+function makeGameApi() {
+  const api = {
     flap: handleAction,
-    snapshot: () => ({
-      state,
-      score,
-      bestScore,
-      obstacles: obstacles.length,
-      obstacleState: obstacles.map((obstacle) => ({
-        x: Math.round(obstacle.x),
-        top: Math.round(obstacle.top),
-        gap: Math.round(obstacle.gap),
-        faceScale: Number(collectibleFaceScale().toFixed(3)),
-        collected: obstacle.collected
-      })),
-      player: {
-        x: Math.round(player.x),
-        y: Math.round(player.y),
-        scale: Number(player.scale.toFixed(3)),
-        targetScale: Number(player.targetScale.toFixed(3))
-      },
-      death: deathEffect
-        ? {
-            life: Math.round(deathEffect.life),
-            maxLife: deathEffect.maxLife,
-            pieces: deathPieces.length,
-            faces: deathPieces.filter((piece) => piece.face).length
-          }
-        : null,
-      audio: {
-        musicReady: Boolean(musicTrack),
-        musicStarted,
-        sfxReady: Object.keys(sfxTracks)
-      },
-      performance: {
-        mode: performanceMode ? "mobile" : "desktop",
-        targetFrameMs: Number(targetFrameMs.toFixed(2)),
-        frameLoad: Number(frameLoad.toFixed(2)),
-        pixelDensity: pixelDensity()
-      },
-      frames: hippoFrames.length
-    })
+    snapshot: gameSnapshot
   };
+  if (isPerfHarnessEnabled()) {
+    api.perf = makePerfApi();
+  }
+  return api;
+}
+
+function isPerfHarnessEnabled() {
+  return typeof location !== "undefined" && new URLSearchParams(location.search).has("perf");
+}
+
+function makePerfApi() {
+  return {
+    startRun: perfStartRun,
+    stabilize: perfStabilize,
+    collectFace: perfCollectFace,
+    forceDeath: perfForceDeath
+  };
+}
+
+function gameSnapshot() {
+  return {
+    state,
+    score,
+    bestScore,
+    obstacles: obstacles.length,
+    obstacleState: obstacles.map((obstacle) => ({
+      x: Math.round(obstacle.x),
+      top: Math.round(obstacle.top),
+      gap: Math.round(obstacle.gap),
+      faceScale: Number(collectibleFaceScale().toFixed(3)),
+      collected: obstacle.collected
+    })),
+    player: {
+      x: Math.round(player.x),
+      y: Math.round(player.y),
+      scale: Number(player.scale.toFixed(3)),
+      targetScale: Number(player.targetScale.toFixed(3))
+    },
+    death: deathEffect
+      ? {
+          life: Math.round(deathEffect.life),
+          maxLife: deathEffect.maxLife,
+          pieces: deathPieces.length,
+          faces: deathFaceCount()
+        }
+      : null,
+    effects: {
+      particles: particles.length,
+      collection: collectionEffects.length,
+      deathPieces: deathPieces.length,
+      deathFaces: deathFaceCount()
+    },
+    audio: {
+      musicReady: Boolean(musicTrack),
+      musicStarted,
+      sfxReady: Object.keys(sfxTracks)
+    },
+    performance: {
+      mode: performanceMode ? "mobile" : "desktop",
+      targetFrameMs: Number(targetFrameMs.toFixed(2)),
+      frameLoad: Number(frameLoad.toFixed(2)),
+      pixelDensity: pixelDensity()
+    },
+    frames: hippoFrames.length
+  };
+}
+
+function deathFaceCount() {
+  let count = 0;
+  for (const piece of deathPieces) {
+    if (piece.face) count += 1;
+  }
+  return count;
+}
+
+function perfStartRun() {
+  resetRun();
+  state = "playing";
+  flap({ silent: true });
+  return gameSnapshot();
+}
+
+function perfStabilize() {
+  if (state !== "playing") return gameSnapshot();
+  obstacles = [];
+  spawnTimer = 240;
+  const safeGroundY = GROUND_Y - PLAYER_GROUND_RADIUS * player.scale - 48;
+  player.y = constrain(player.y, 142, safeGroundY);
+  player.vy = constrain(player.vy, -2, 2);
+  player.rot = 0;
+  return gameSnapshot();
+}
+
+function perfCollectFace() {
+  if (state !== "playing") return gameSnapshot();
+  perfStabilize();
+  const gap = 170 * PIPE_GAP_MULT;
+  const faceX = player.x + 38 + (score % 4) * 8;
+  const faceY = constrain(player.y - 12 + sin(score * 0.7) * 18, 126, GROUND_Y - 120);
+  collectFace({
+    x: faceX - PIPE_W * 0.5,
+    w: PIPE_W,
+    top: faceY - gap * 0.5,
+    gap,
+    collected: false
+  });
+  return gameSnapshot();
+}
+
+function perfForceDeath() {
+  if (state !== "playing") return gameSnapshot();
+  obstacles = [];
+  const safeGroundY = GROUND_Y - PLAYER_GROUND_RADIUS * player.scale - 4;
+  player.y = constrain(player.y, 50, safeGroundY);
+  player.vy = 0;
+  crash();
+  return gameSnapshot();
 }
 
 function windowResized() {

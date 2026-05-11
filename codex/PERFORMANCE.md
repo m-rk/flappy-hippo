@@ -2,64 +2,69 @@
 
 ## Current State
 
-The performance pass in commit `d61340b` targeted only the tuned `/codex/` version. The root `/` route was intentionally left as the restored original game route from `c39e760`.
+This pass targets only the tuned `/codex/` build. The root `/` game is intentionally unchanged.
 
-The chosen target for mobile is a steady, cooler 30fps rather than chasing 60fps. The goal is responsive gameplay with fewer frame-time spikes on normal phones.
+The mobile target remains a steady 30fps rather than 60fps. The current proof uses a browser harness with a mobile viewport, touch input, DPR 3, and 6x CPU throttling. It now covers normal gameplay, active face collection effects, the score-20 milestone collection, and the score-20 death burst.
 
-## Decisions
+## Fresh Baseline
 
-- Optimize `/codex/` first.
-- Prefer a consistent 30fps mobile mode when needed.
-- Start with conservative changes before a renderer rewrite.
-- Preserve the visual style, but cap expensive extras under load.
-- Validate with an automated browser FPS smoke test.
+The previous `codex/perf-smoke.mjs` still passed frame budgets, but it only exercised incidental gameplay. In this pass it reached score `1` before death, with `22` death pieces and `1` face piece, so it did not prove the requested score-20+ collection/death case.
 
-## Implemented Changes
+## Changes
 
-- Mobile, touch, and narrow screens use `pixelDensity(1)` and `frameRate(30)`.
-- Gameplay simulation compensates for the 30fps render target so movement speed does not halve.
-- Cloud puffs are cached into a reusable `p5.Graphics` sprite instead of redrawing the ellipses every frame.
-- The large music MP3 lazy-loads on first action instead of preloading.
-- Sound effects use small reusable audio pools instead of cloning audio nodes per play.
-- Particle and death effects are capped and scaled down in mobile/performance mode.
-- Per-frame allocation was reduced in obstacle cleanup, collision checks, particle cleanup, and effect cleanup.
-- `codex/perf-smoke.mjs` was added to run a repeatable mobile-viewport frame-time smoke test.
+- `codex/perf-smoke.mjs` now supports `--runs` and executes a deterministic performance scenario.
+- The scenario starts normal gameplay, samples gameplay with obstacles, triggers repeated real face collections up to score `20`, then forces a death at score `20`.
+- The harness records overall and per-phase frame metrics, coverage gates, score, game state, particles, collection effects, death pieces, death face pieces, console errors, page errors, and CPU throttle status.
+- `codex/sketch.js` exposes perf-only helpers behind `?perf=1`; the public `/codex/` page keeps the same normal API.
+- The snapshot API now reports particle, collection-effect, death-piece, and death-face counts without allocating a filtered death-piece array each sample.
 
-## Validation
-
-Command:
+## Validation Commands
 
 ```bash
-rtk node codex/perf-smoke.mjs
+node --check codex/sketch.js
+node --check codex/perf-smoke.mjs
+node codex/perf-smoke.mjs --runs 5
+node /Users/mark/.codex/tools/html-checker/check-html.mjs codex/index.html
 ```
 
-Latest passing result from the implementation pass:
+The html checker needed to run outside the sandbox so Chromium could launch. It passed desktop `1440x1000` and mobile `390x844` with `0` errors and `0` warnings.
+
+## Five-Run Performance Result
+
+Environment:
 
 - Viewport: `390x844`
 - Device scale factor: `3`
-- CPU throttle: `6x`
-- Average: `29.92fps`
-- p95: `34.8ms`
-- p99: `35.9ms`
-- Worst frame: `67.5ms`
-- Failures: none
+- Touch/mobile emulation: enabled
+- CPU throttle: `6x`, applied in every run
+- Duration per run: `12000ms`
+- Required budgets: fps `>=28`, p95 `<=42ms`, p99 `<=70ms`, worst `<=180ms`, frames over 50ms `<=6`
 
-Additional checks:
+| Run | Samples | FPS | p95 | p99 | Worst | >50ms | Failures |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| 1 | 355 | 29.90 | 35.0ms | 39.0ms | 67.5ms | 1 | none |
+| 2 | 356 | 30.00 | 34.9ms | 35.8ms | 45.6ms | 0 | none |
+| 3 | 356 | 29.99 | 34.9ms | 37.6ms | 40.2ms | 0 | none |
+| 4 | 355 | 29.98 | 34.7ms | 35.4ms | 50.5ms | 1 | none |
+| 5 | 355 | 29.99 | 34.9ms | 40.6ms | 47.0ms | 0 | none |
 
-- `node --check codex/sketch.js`
-- `node --check codex/perf-smoke.mjs`
-- `rtk node /Users/mark/.codex/tools/html-checker/check-html.mjs codex/index.html`
-- In-app browser smoke: `/codex/index.html` loaded, started, and produced no console logs.
+Coverage in every run:
 
-## Known Residue
+- Normal gameplay samples: `73`
+- Gameplay samples with obstacles: `50-51`
+- Collection samples: `144-145`
+- Collection-active samples: `144-145`
+- Death samples: `142-143`
+- Death-effect samples: `25`
+- Max score: `20`
+- Score-20 collection reached: `true`
+- Death triggered at score: `20`
+- Max particles: `41`
+- Max collection effects: `4`
+- Max death pieces: `46`
+- Max death face pieces: `20`
+- Console/page errors: none
 
-The local worktree had untracked `assets/` and `scripts/` extraction leftovers during this pass. They were intentionally not staged.
+## Remaining Risk
 
-## Next Steps
-
-Test on a real phone. If gameplay still feels uneven, the next pass should be a deeper renderer pass:
-
-- Cache more static layers.
-- Consider moving the renderer away from frequent p5 drawing calls.
-- Add an optional live frame-time/debug overlay for real-device testing.
-- Revisit effect budgets after real-device measurements.
+This is still automated browser evidence, not a real-phone thermal test. The harness is intentionally stricter than the old smoke test for animation coverage, but real-device testing is still the best follow-up if the game feels uneven on specific phones.
