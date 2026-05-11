@@ -48,6 +48,31 @@ const CLOUD_SPRITE_W = 172;
 const CLOUD_SPRITE_H = 82;
 const CLOUD_ORIGIN_X = 74;
 const CLOUD_ORIGIN_Y = 28;
+const TROUBLESHOOT_STORAGE_KEY = "flappy-hippo-troubleshoot-session";
+const OPTIONS_BUTTON = { x: WORLD_W - 52, y: 24, w: 36, h: 32 };
+const OPTIONS_PANEL = { x: 20, y: 224, w: 350, h: 322 };
+const OPTION_ROWS = [
+  { key: "sixtyFps", label: "60 FPS" },
+  { key: "sharpCanvas", label: "sharp canvas" },
+  { key: "clouds", label: "clouds" },
+  { key: "ground", label: "ground detail" },
+  { key: "jumpSparkles", label: "jump sparkles" },
+  { key: "collectionEffects", label: "collect popups" },
+  { key: "deathPieces", label: "death burst" },
+  { key: "playerAnimation", label: "hippo animation" },
+  { key: "audio", label: "audio" }
+];
+const DEFAULT_TROUBLESHOOT_OPTIONS = {
+  sixtyFps: true,
+  sharpCanvas: true,
+  clouds: true,
+  ground: true,
+  jumpSparkles: true,
+  collectionEffects: true,
+  deathPieces: true,
+  playerAnimation: true,
+  audio: true
+};
 const RGB = {
   mint: [236, 248, 213],
   yellow: [255, 239, 87],
@@ -91,9 +116,14 @@ let crashCooldown = 0;
 let crashUiFrame = 0;
 let lastActionFrame = -99;
 let performanceMode = false;
+let targetFrameRate = DESKTOP_FRAME_RATE;
 let targetFrameMs = 1000 / DESKTOP_FRAME_RATE;
 let frameLoad = 1;
 let animationClock = 0;
+let buildStamp = "";
+let optionsPanelOpen = false;
+let lastPointerFrame = -99;
+let troubleshootOptions = { ...DEFAULT_TROUBLESHOOT_OPTIONS };
 
 function preload() {
   for (let i = 1; i <= FRAME_COUNT; i += 1) {
@@ -104,6 +134,8 @@ function preload() {
 }
 
 function setup() {
+  loadTroubleshootOptions();
+  buildStamp = formatBuildStamp();
   const canvas = createCanvas(windowWidth, windowHeight);
   canvas.parent("game-root");
   configureCanvasPerformance();
@@ -141,8 +173,111 @@ function makePerfApi() {
     startRun: perfStartRun,
     stabilize: perfStabilize,
     collectFace: perfCollectFace,
+    placeCollectionObstacle: perfPlaceCollectionObstacle,
+    snapshot: perfSnapshot,
     forceDeath: perfForceDeath
   };
+}
+
+function formatBuildStamp() {
+  if (typeof document === "undefined") return "";
+  const raw = document.lastModified;
+  const modified = new Date(raw);
+  if (!Number.isFinite(modified.getTime())) return raw ? `modified ${raw}` : "";
+  return `modified ${modified.toLocaleString(undefined, {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit"
+  })}`;
+}
+
+function loadTroubleshootOptions() {
+  troubleshootOptions = { ...DEFAULT_TROUBLESHOOT_OPTIONS };
+  if (typeof sessionStorage === "undefined") return;
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(TROUBLESHOOT_STORAGE_KEY) || "{}");
+    for (const key of Object.keys(DEFAULT_TROUBLESHOOT_OPTIONS)) {
+      if (typeof saved[key] === "boolean") troubleshootOptions[key] = saved[key];
+    }
+  } catch (error) {
+    troubleshootOptions = { ...DEFAULT_TROUBLESHOOT_OPTIONS };
+  }
+}
+
+function saveTroubleshootOptions() {
+  if (typeof sessionStorage === "undefined") return;
+  try {
+    sessionStorage.setItem(TROUBLESHOOT_STORAGE_KEY, JSON.stringify(troubleshootOptions));
+  } catch (error) {
+    // Session storage can be unavailable in private or restricted browser modes.
+  }
+}
+
+function optionEnabled(key) {
+  return troubleshootOptions[key] !== false;
+}
+
+function setTroubleshootOption(key, value) {
+  if (!Object.prototype.hasOwnProperty.call(DEFAULT_TROUBLESHOOT_OPTIONS, key)) return;
+  troubleshootOptions[key] = Boolean(value);
+  saveTroubleshootOptions();
+  applyTroubleshootSideEffects(key);
+}
+
+function toggleTroubleshootOption(key) {
+  setTroubleshootOption(key, !optionEnabled(key));
+}
+
+function applyLowEffectsPreset() {
+  troubleshootOptions = {
+    sixtyFps: false,
+    sharpCanvas: false,
+    clouds: false,
+    ground: false,
+    jumpSparkles: false,
+    collectionEffects: false,
+    deathPieces: false,
+    playerAnimation: false,
+    audio: false
+  };
+  saveTroubleshootOptions();
+  applyTroubleshootSideEffects("preset");
+}
+
+function resetTroubleshootOptions() {
+  troubleshootOptions = { ...DEFAULT_TROUBLESHOOT_OPTIONS };
+  saveTroubleshootOptions();
+  applyTroubleshootSideEffects("reset");
+}
+
+function applyTroubleshootSideEffects(key) {
+  if (key === "audio" || key === "preset") {
+    stopAudioIfDisabled();
+  }
+  if (key === "sharpCanvas" || key === "sixtyFps" || key === "preset" || key === "reset") {
+    configureCanvasPerformance();
+  }
+  if (!optionEnabled("collectionEffects")) {
+    collectionEffects = [];
+  }
+  if (!optionEnabled("deathPieces")) {
+    deathPieces = [];
+  }
+  if (!optionEnabled("jumpSparkles") || !optionEnabled("collectionEffects") || !optionEnabled("deathPieces")) {
+    particles = [];
+  }
+}
+
+function stopAudioIfDisabled() {
+  if (optionEnabled("audio")) return;
+  musicStarted = false;
+  if (musicTrack) musicTrack.pause();
+  for (const pool of Object.values(sfxTracks)) {
+    for (const track of pool) {
+      track.pause();
+    }
+  }
 }
 
 function gameSnapshot() {
@@ -186,8 +321,10 @@ function gameSnapshot() {
     performance: {
       mode: performanceMode ? "mobile" : "desktop",
       targetFrameMs: Number(targetFrameMs.toFixed(2)),
+      targetFrameRate,
       frameLoad: Number(frameLoad.toFixed(2)),
-      pixelDensity: pixelDensity()
+      pixelDensity: pixelDensity(),
+      troubleshootOptions: { ...troubleshootOptions }
     },
     frames: hippoFrames.length
   };
@@ -201,26 +338,94 @@ function deathFaceCount() {
   return count;
 }
 
+function perfSnapshot() {
+  const snapshot = gameSnapshot();
+  snapshot.player.vy = perfMetric(player.vy);
+  snapshot.player.rot = perfMetric(player.rot);
+  snapshot.clearance = perfClearanceSnapshot();
+  return snapshot;
+}
+
+function perfClearanceSnapshot() {
+  const hitbox = perfPlayerHitbox();
+  const ground = GROUND_Y - PLAYER_GROUND_RADIUS * player.scale - player.y;
+  let nearestPipe = null;
+
+  for (const obstacle of obstacles) {
+    const bottomY = obstacle.top + obstacle.gap;
+    const horizontalGap =
+      obstacle.x > hitbox.x + hitbox.w
+        ? obstacle.x - (hitbox.x + hitbox.w)
+        : hitbox.x > obstacle.x + obstacle.w
+          ? hitbox.x - (obstacle.x + obstacle.w)
+          : 0;
+    const faceX = obstacle.x + obstacle.w * 0.5;
+    const top = hitbox.y - obstacle.top;
+    const bottom = bottomY - (hitbox.y + hitbox.h);
+    const minPipe = Math.min(top, bottom);
+    const candidate = {
+      x: Math.round(obstacle.x),
+      collected: obstacle.collected,
+      horizontalGap: perfMetric(horizontalGap),
+      faceDx: perfMetric(faceX - player.x),
+      top: perfMetric(top),
+      bottom: perfMetric(bottom),
+      min: perfMetric(minPipe)
+    };
+    if (
+      !nearestPipe ||
+      Math.abs(candidate.horizontalGap) + Math.abs(candidate.faceDx) <
+        Math.abs(nearestPipe.horizontalGap) + Math.abs(nearestPipe.faceDx)
+    ) {
+      nearestPipe = candidate;
+    }
+  }
+
+  const pipeRisk =
+    nearestPipe &&
+    (nearestPipe.horizontalGap <= 8 || Math.abs(nearestPipe.faceDx) <= 70) &&
+    nearestPipe.min <= 30;
+  const groundRisk = ground <= 36;
+  return {
+    ground: perfMetric(ground),
+    pipe: nearestPipe,
+    risk: Boolean(groundRisk || pipeRisk)
+  };
+}
+
+function perfPlayerHitbox() {
+  return {
+    x: player.x - PLAYER_HIT_W * player.scale * 0.55,
+    y: player.y - PLAYER_HIT_H * player.scale * 0.52,
+    w: PLAYER_HIT_W * player.scale,
+    h: PLAYER_HIT_H * player.scale
+  };
+}
+
+function perfMetric(value) {
+  return Number.isFinite(value) ? Number(value.toFixed(2)) : 0;
+}
+
 function perfStartRun() {
   resetRun();
   state = "playing";
   flap({ silent: true });
-  return gameSnapshot();
+  return perfSnapshot();
 }
 
 function perfStabilize() {
-  if (state !== "playing") return gameSnapshot();
+  if (state !== "playing") return perfSnapshot();
   obstacles = [];
   spawnTimer = 240;
   const safeGroundY = GROUND_Y - PLAYER_GROUND_RADIUS * player.scale - 48;
   player.y = constrain(player.y, 142, safeGroundY);
   player.vy = constrain(player.vy, -2, 2);
   player.rot = 0;
-  return gameSnapshot();
+  return perfSnapshot();
 }
 
 function perfCollectFace() {
-  if (state !== "playing") return gameSnapshot();
+  if (state !== "playing") return perfSnapshot();
   perfStabilize();
   const gap = 170 * PIPE_GAP_MULT;
   const faceX = player.x + 38 + (score % 4) * 8;
@@ -232,17 +437,52 @@ function perfCollectFace() {
     gap,
     collected: false
   });
-  return gameSnapshot();
+  return perfSnapshot();
+}
+
+function perfPlaceCollectionObstacle(options = {}) {
+  if (state !== "playing") return perfSnapshot();
+
+  const groundClearance = Number.isFinite(options.groundClearance) ? options.groundClearance : 30;
+  const bottomClearance = Number.isFinite(options.bottomClearance) ? options.bottomClearance : 18;
+  const faceLead = Number.isFinite(options.faceLead) ? options.faceLead : 8;
+  const gap = Number.isFinite(options.gap) ? options.gap : 170 * PIPE_GAP_MULT;
+  const targetY = GROUND_Y - PLAYER_GROUND_RADIUS * player.scale - groundClearance;
+
+  player.y = constrain(targetY, 96, GROUND_Y - PLAYER_GROUND_RADIUS * player.scale - 6);
+  player.vy = Number.isFinite(options.vy) ? options.vy : 1.35;
+  player.rot = 0.08;
+
+  const hitbox = perfPlayerHitbox();
+  let bottomY = hitbox.y + hitbox.h + bottomClearance;
+  bottomY = constrain(bottomY, gap + 56, GROUND_Y - 16);
+  const top = bottomY - gap;
+  const faceScale = collectibleFaceScale();
+  const playerFront =
+    player.x + (PLAYER_BASE_W - PLAYER_ANCHOR_X) * player.scale - FACE_W * faceScale * 0.5;
+  const faceX = playerFront + faceLead;
+
+  obstacles = [
+    {
+      x: faceX - PIPE_W * 0.5,
+      w: PIPE_W,
+      top,
+      gap,
+      collected: false
+    }
+  ];
+  spawnTimer = Number.isFinite(options.spawnTimer) ? options.spawnTimer : 260;
+  return perfSnapshot();
 }
 
 function perfForceDeath() {
-  if (state !== "playing") return gameSnapshot();
+  if (state !== "playing") return perfSnapshot();
   obstacles = [];
   const safeGroundY = GROUND_Y - PLAYER_GROUND_RADIUS * player.scale - 4;
   player.y = constrain(player.y, 50, safeGroundY);
   player.vy = 0;
   crash();
-  return gameSnapshot();
+  return perfSnapshot();
 }
 
 function windowResized() {
@@ -253,9 +493,11 @@ function windowResized() {
 
 function configureCanvasPerformance() {
   performanceMode = isMobilePerformanceTarget();
-  targetFrameMs = 1000 / (performanceMode ? MOBILE_FRAME_RATE : DESKTOP_FRAME_RATE);
-  pixelDensity(performanceMode ? 1 : Math.min(2, window.devicePixelRatio || 1));
-  frameRate(performanceMode ? MOBILE_FRAME_RATE : DESKTOP_FRAME_RATE);
+  targetFrameRate = performanceMode || !optionEnabled("sixtyFps") ? MOBILE_FRAME_RATE : DESKTOP_FRAME_RATE;
+  targetFrameMs = 1000 / targetFrameRate;
+  const highDensity = optionEnabled("sharpCanvas") ? Math.min(2, window.devicePixelRatio || 1) : 1;
+  pixelDensity(performanceMode ? 1 : highDensity);
+  frameRate(targetFrameRate);
 }
 
 function isMobilePerformanceTarget() {
@@ -299,6 +541,7 @@ function setupAudio() {
 }
 
 function startMusic() {
+  if (!optionEnabled("audio")) return;
   if (!musicTrack || !musicTrack.paused) {
     musicStarted = Boolean(musicTrack);
     return;
@@ -319,6 +562,7 @@ function startMusic() {
 }
 
 function playSfx(name) {
+  if (!optionEnabled("audio")) return;
   const pool = sfxTracks[name];
   if (!pool || pool.length === 0) return;
 
@@ -406,15 +650,21 @@ function updateFrameLoad() {
 }
 
 function frameStepScale() {
-  return performanceMode ? DESKTOP_FRAME_RATE / MOBILE_FRAME_RATE : 1;
+  return DESKTOP_FRAME_RATE / targetFrameRate;
 }
 
 function updateReady() {
   const t = animationClock;
   const step = frameStepScale();
-  player.y = READY_PLAYER_Y + sin(t * 0.08) * 9;
-  player.vy = sin(t * 0.08) * 0.85;
-  player.rot = sin(t * 0.07) * 0.05;
+  if (optionEnabled("playerAnimation")) {
+    player.y = READY_PLAYER_Y + sin(t * 0.08) * 9;
+    player.vy = sin(t * 0.08) * 0.85;
+    player.rot = sin(t * 0.07) * 0.05;
+  } else {
+    player.y = READY_PLAYER_Y;
+    player.vy = 0;
+    player.rot = 0;
+  }
   player.scale = lerp(player.scale, player.targetScale, 0.12);
   groundOffset = (groundOffset + 0.45 * step) % 48;
 }
@@ -481,23 +731,25 @@ function updateDying() {
   const age = deathEffect.maxLife - deathEffect.life;
   if (!deathEffect.burstDone && age >= 12) {
     deathEffect.burstDone = true;
-    makeDeathPieces(deathEffect.x, deathEffect.y, deathEffect.scale, deathEffect.score);
-    burst(
-      deathEffect.x,
-      deathEffect.y,
-      RGB.yellow,
-      Math.round(20 * deathEffect.scale),
-      1.2 + deathEffect.scale * 0.35,
-      0.9 + deathEffect.scale * 0.45
-    );
-    burst(
-      deathEffect.x + 8 * deathEffect.scale,
-      deathEffect.y - 5 * deathEffect.scale,
-      RGB.mint,
-      Math.round(14 * deathEffect.scale),
-      1.1 + deathEffect.scale * 0.25,
-      0.8 + deathEffect.scale * 0.35
-    );
+    if (optionEnabled("deathPieces")) {
+      makeDeathPieces(deathEffect.x, deathEffect.y, deathEffect.scale, deathEffect.score);
+      burst(
+        deathEffect.x,
+        deathEffect.y,
+        RGB.yellow,
+        Math.round(20 * deathEffect.scale),
+        1.2 + deathEffect.scale * 0.35,
+        0.9 + deathEffect.scale * 0.45
+      );
+      burst(
+        deathEffect.x + 8 * deathEffect.scale,
+        deathEffect.y - 5 * deathEffect.scale,
+        RGB.mint,
+        Math.round(14 * deathEffect.scale),
+        1.1 + deathEffect.scale * 0.25,
+        0.8 + deathEffect.scale * 0.35
+      );
+    }
   }
   if (deathEffect.life <= 0) {
     deathEffect = null;
@@ -543,7 +795,9 @@ function flap(options = {}) {
   const sizePenalty = 1 + max(0, player.scale - 1) * JUMP_SIZE_PENALTY;
   player.vy = (-7.35 * PLAYER_VELOCITY_MULT) / sizePenalty;
   player.rot = -0.36;
-  burst(player.x - 22, player.y + 18, RGB.mint, 5);
+  if (optionEnabled("jumpSparkles")) {
+    burst(player.x - 22, player.y + 18, RGB.mint, 5);
+  }
 }
 
 function crash() {
@@ -580,13 +834,99 @@ function keyPressed() {
 }
 
 function mousePressed() {
-  handleAction();
+  handlePointerAction();
   return false;
 }
 
 function touchStarted() {
-  handleAction();
+  handlePointerAction();
   return false;
+}
+
+function handlePointerAction() {
+  if (frameCount === lastPointerFrame) return;
+  lastPointerFrame = frameCount;
+  if (handleOptionsPointer()) return;
+  handleAction();
+}
+
+function handleOptionsPointer() {
+  if (state !== "ready") return false;
+
+  const screenPoint = currentPointerScreenPoint();
+  const point = screenToWorld(screenPoint.x, screenPoint.y);
+  if (pointInRect(point, OPTIONS_BUTTON)) {
+    optionsPanelOpen = !optionsPanelOpen;
+    return true;
+  }
+
+  if (!optionsPanelOpen) return false;
+
+  const action = optionPanelActionAt(point);
+  if (action === "low") {
+    applyLowEffectsPreset();
+    return true;
+  }
+  if (action === "reset") {
+    resetTroubleshootOptions();
+    return true;
+  }
+  if (action) {
+    toggleTroubleshootOption(action);
+    return true;
+  }
+  if (pointInRect(point, OPTIONS_PANEL)) return true;
+
+  optionsPanelOpen = false;
+  return true;
+}
+
+function screenToWorld(x, y) {
+  return {
+    x: (x - fitX) / fitScale,
+    y: (y - fitY) / fitScale
+  };
+}
+
+function currentPointerScreenPoint() {
+  if (typeof touches !== "undefined" && touches.length > 0) {
+    return { x: touches[0].x, y: touches[0].y };
+  }
+  return { x: mouseX, y: mouseY };
+}
+
+function pointInRect(point, rect) {
+  return point.x >= rect.x && point.x <= rect.x + rect.w && point.y >= rect.y && point.y <= rect.y + rect.h;
+}
+
+function optionPanelActionAt(point) {
+  const lowButton = optionPanelLowButton();
+  const resetButton = optionPanelResetButton();
+  if (pointInRect(point, lowButton)) return "low";
+  if (pointInRect(point, resetButton)) return "reset";
+
+  for (let i = 0; i < OPTION_ROWS.length; i += 1) {
+    const row = optionRowRect(i);
+    if (pointInRect(point, row)) return OPTION_ROWS[i].key;
+  }
+  return null;
+}
+
+function optionPanelLowButton() {
+  return { x: OPTIONS_PANEL.x + 16, y: OPTIONS_PANEL.y + 40, w: 148, h: 30 };
+}
+
+function optionPanelResetButton() {
+  return { x: OPTIONS_PANEL.x + OPTIONS_PANEL.w - 164, y: OPTIONS_PANEL.y + 40, w: 148, h: 30 };
+}
+
+function optionRowRect(index) {
+  return {
+    x: OPTIONS_PANEL.x + 16,
+    y: OPTIONS_PANEL.y + 82 + index * 24,
+    w: OPTIONS_PANEL.w - 32,
+    h: 22
+  };
 }
 
 function spawnObstacle() {
@@ -618,21 +958,23 @@ function collectFace(obstacle) {
 
   const faceX = obstacle.x + obstacle.w * 0.5;
   const faceY = obstacle.top + obstacle.gap * 0.5;
-  collectionEffects.push({
-    x: faceX,
-    y: faceY,
-    scale: milestone ? 1.75 : 1,
-    life: milestone ? 52 : 34,
-    maxLife: milestone ? 52 : 34
-  });
-  burst(
-    faceX,
-    faceY,
-    milestone ? RGB.pink : RGB.mint,
-    milestone ? 26 : 12,
-    milestone ? 1.45 : 1,
-    milestone ? 1.35 : 1
-  );
+  if (optionEnabled("collectionEffects")) {
+    collectionEffects.push({
+      x: faceX,
+      y: faceY,
+      scale: milestone ? 1.75 : 1,
+      life: milestone ? 52 : 34,
+      maxLife: milestone ? 52 : 34
+    });
+    burst(
+      faceX,
+      faceY,
+      milestone ? RGB.pink : RGB.mint,
+      milestone ? 26 : 12,
+      milestone ? 1.45 : 1,
+      milestone ? 1.35 : 1
+    );
+  }
 }
 
 function faceHalfCovered(obstacle) {
@@ -670,6 +1012,8 @@ function drawBackdrop() {
   noStroke();
   fill(123, 197, 205);
   rect(viewLeft, viewTop, viewRight - viewLeft, viewBottom - viewTop);
+
+  if (!optionEnabled("clouds")) return;
 
   cloudOffset += (state === "playing" ? 0.27 : 0.1) * step;
   lowerCloudOffset += lowerCloudAdvance() * step;
@@ -856,7 +1200,7 @@ function buildFaceOutlineImage(radius) {
 
 function drawHippo() {
   const frameStep = state === "ready" ? 4 : 3;
-  const idx = Math.floor(animationClock / frameStep) % hippoFrames.length;
+  const idx = optionEnabled("playerAnimation") ? Math.floor(animationClock / frameStep) % hippoFrames.length : 0;
   const img = hippoFrames[idx];
   const w = PLAYER_BASE_W * player.scale;
   const h = PLAYER_BASE_H * player.scale;
@@ -932,6 +1276,8 @@ function drawGround() {
   fill(74, 180, 61);
   rect(left, GROUND_Y + 4, widthToFill, 7);
 
+  if (!optionEnabled("ground")) return;
+
   const tileOffset = groundOffset % 48;
   for (let x = left - 48 - tileOffset; x < right + 48; x += 48) {
     fill(172, 239, 83);
@@ -956,6 +1302,9 @@ function drawHud() {
     drawBitmapText("FLAPPY", WORLD_W / 2, 142, 7, color(255, 239, 87));
     drawBitmapText("HIPPO", WORLD_W / 2, 202, 7, color(255, 239, 87));
     drawCanvasButton(WORLD_W / 2, 430, "START");
+    drawOptionsButton();
+    drawBuildStamp();
+    if (optionsPanelOpen) drawOptionsPanel();
     return;
   }
 
@@ -990,6 +1339,118 @@ function drawCanvasButton(x, y, label) {
   rect(x + 53, y + 15, 22, 8);
   rectMode(CORNER);
   drawBitmapText(label, x, y + 1, 3, color(0), false);
+}
+
+function drawOptionsButton() {
+  const b = OPTIONS_BUTTON;
+  push();
+  rectMode(CORNER);
+  noStroke();
+  fill(0);
+  rect(b.x + 3, b.y + 4, b.w, b.h);
+  fill(optionsPanelOpen ? RGB.mint[0] : RGB.yellow[0], optionsPanelOpen ? RGB.mint[1] : RGB.yellow[1], optionsPanelOpen ? RGB.mint[2] : RGB.yellow[2]);
+  rect(b.x, b.y, b.w, b.h);
+  drawGamepadIcon(b.x + b.w / 2, b.y + b.h / 2 + 1);
+  pop();
+}
+
+function drawGamepadIcon(x, y) {
+  noStroke();
+  fill(0);
+  rectMode(CENTER);
+  rect(x, y, 22, 11);
+  rect(x - 10, y + 2, 10, 10);
+  rect(x + 10, y + 2, 10, 10);
+  fill(255, 239, 87);
+  rect(x - 9, y + 2, 7, 2);
+  rect(x - 9, y + 2, 2, 7);
+  fill(64, 196, 70);
+  rect(x + 8, y + 1, 3, 3);
+  rect(x + 13, y + 4, 3, 3);
+  rectMode(CORNER);
+}
+
+function drawBuildStamp() {
+  if (!buildStamp) return;
+  push();
+  textFont('"Courier New", monospace');
+  textStyle(NORMAL);
+  textAlign(RIGHT, BOTTOM);
+  textSize(8);
+  noStroke();
+  fill(0, 150);
+  text(buildStamp, WORLD_W - 7, WORLD_H - 7);
+  fill(255, 255, 255, 190);
+  text(buildStamp, WORLD_W - 8, WORLD_H - 8);
+  pop();
+}
+
+function drawOptionsPanel() {
+  const p = OPTIONS_PANEL;
+  push();
+  rectMode(CORNER);
+  noStroke();
+  fill(0);
+  rect(p.x + 4, p.y + 5, p.w, p.h);
+  fill(236, 248, 213);
+  rect(p.x, p.y, p.w, p.h);
+  fill(0);
+  rect(p.x, p.y, p.w, 4);
+  rect(p.x, p.y + p.h - 4, p.w, 4);
+  rect(p.x, p.y, 4, p.h);
+  rect(p.x + p.w - 4, p.y, 4, p.h);
+
+  textFont('"Courier New", monospace');
+  textAlign(CENTER, CENTER);
+  textStyle(BOLD);
+  textSize(13);
+  fill(0);
+  text("TROUBLESHOOT", p.x + p.w / 2, p.y + 22);
+
+  drawOptionPanelButton(optionPanelLowButton(), "LOW FX");
+  drawOptionPanelButton(optionPanelResetButton(), "RESET");
+
+  textStyle(NORMAL);
+  textSize(10);
+  fill(0, 130);
+  text("session only", p.x + p.w / 2, p.y + p.h - 17);
+
+  for (let i = 0; i < OPTION_ROWS.length; i += 1) {
+    drawOptionRow(OPTION_ROWS[i], optionRowRect(i));
+  }
+  pop();
+}
+
+function drawOptionPanelButton(rectSpec, label) {
+  fill(0);
+  rect(rectSpec.x + 2, rectSpec.y + 3, rectSpec.w, rectSpec.h);
+  fill(255, 239, 87);
+  rect(rectSpec.x, rectSpec.y, rectSpec.w, rectSpec.h);
+  textAlign(CENTER, CENTER);
+  textStyle(BOLD);
+  textSize(12);
+  fill(0);
+  text(label, rectSpec.x + rectSpec.w / 2, rectSpec.y + rectSpec.h / 2 + 1);
+}
+
+function drawOptionRow(row, rectSpec) {
+  const enabled = optionEnabled(row.key);
+  fill(0, 25);
+  rect(rectSpec.x, rectSpec.y, rectSpec.w, rectSpec.h);
+  fill(0);
+  rect(rectSpec.x + 8, rectSpec.y + 5, 12, 12);
+  fill(enabled ? RGB.green[0] : RGB.gray[0], enabled ? RGB.green[1] : RGB.gray[1], enabled ? RGB.green[2] : RGB.gray[2]);
+  rect(rectSpec.x + 10, rectSpec.y + 7, 8, 8);
+  textAlign(LEFT, CENTER);
+  textStyle(BOLD);
+  textSize(11);
+  fill(0);
+  text(row.label.toUpperCase(), rectSpec.x + 30, rectSpec.y + rectSpec.h / 2 + 1);
+  textAlign(RIGHT, CENTER);
+  textStyle(NORMAL);
+  textSize(10);
+  fill(enabled ? 37 : 91, enabled ? 139 : 92, enabled ? 50 : 95);
+  text(enabled ? "on" : "off", rectSpec.x + rectSpec.w - 10, rectSpec.y + rectSpec.h / 2 + 1);
 }
 
 const BITMAP_FONT = {
@@ -1132,6 +1593,10 @@ function makeDeathPieces(x, y, popScale, faceScore) {
 }
 
 function drawDeathPieces() {
+  if (!optionEnabled("deathPieces")) {
+    deathPieces = [];
+    return;
+  }
   const step = frameStepScale();
   let write = 0;
   for (const piece of deathPieces) {
@@ -1188,6 +1653,10 @@ function updateParticles() {
 }
 
 function drawCollectionEffects() {
+  if (!optionEnabled("collectionEffects")) {
+    collectionEffects = [];
+    return;
+  }
   const step = frameStepScale();
   let write = 0;
   for (const effect of collectionEffects) {
