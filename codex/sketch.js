@@ -22,8 +22,8 @@ const FACE_W = 52;
 const FACE_H = FACE_W * (FACE_SOURCE_H / FACE_SOURCE_W);
 
 const PLAYER_VELOCITY_MULT = 1.5;
-const JUMP_SIZE_PENALTY = 0.55;
-const GROWTH_BASE = 0.12;
+const JUMP_SIZE_PENALTY = 0.45;
+const GROWTH_BASE = 0.1;
 const GROWTH_FALLOFF = 0.6;
 const PIPE_GAP_MULT = 1.5;
 const BASE_SPEED = 2.08;
@@ -1019,7 +1019,7 @@ function handlePointerAction() {
 }
 
 function handleOptionsPointer() {
-  if (state !== "ready") return false;
+  if (!optionsAvailable()) return false;
 
   const screenPoint = currentPointerScreenPoint();
   const point = screenToWorld(screenPoint.x, screenPoint.y);
@@ -1047,6 +1047,10 @@ function handleOptionsPointer() {
 
   optionsPanelOpen = false;
   return true;
+}
+
+function optionsAvailable() {
+  return state === "ready" || state === "crashed";
 }
 
 function screenToWorld(x, y) {
@@ -1099,8 +1103,8 @@ function optionRowRect(index) {
 
 function spawnObstacle() {
   const gap = random(162, 176) * PIPE_GAP_MULT;
-  const marginTop = 82;
-  const marginBottom = 116;
+  const marginTop = 66;
+  const marginBottom = 92;
   const firstTop = 292 - gap * 0.5;
   const top = score === 0 && obstacles.length === 0 ? firstTop : random(marginTop, GROUND_Y - marginBottom - gap);
   obstacles.push({
@@ -1479,6 +1483,8 @@ function drawHud() {
   drawGameOverScore();
   drawBitmapText(`BEST ${bestScore}`, WORLD_W / 2, 316, 3, color(255));
   drawCanvasButton(WORLD_W / 2, 430, "AGAIN");
+  drawOptionsButton();
+  if (optionsPanelOpen) drawOptionsPanel();
 }
 
 function drawScore(value, x, y, size) {
