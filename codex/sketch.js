@@ -20,6 +20,9 @@ const FACE_SOURCE_W = 108;
 const FACE_SOURCE_H = 102;
 const FACE_W = 52;
 const FACE_H = FACE_W * (FACE_SOURCE_H / FACE_SOURCE_W);
+const MYSTERY_BLOCK_SIZE = 44;
+const MYSTERY_BLOCK_CHANCE = 0.16;
+const MYSTERY_BLOCK_MIN_SCORE = 2;
 
 const PLAYER_VELOCITY_MULT = 1.5;
 const JUMP_SIZE_PENALTY = 0.45;
@@ -60,6 +63,7 @@ const OPTION_ROWS = [
   { key: "ground", label: "ground detail" },
   { key: "jumpSparkles", label: "jump sparkles" },
   { key: "collectionEffects", label: "collect popups" },
+  { key: "mysteryBlocks", label: "??? blocks" },
   { key: "deathPieces", label: "death burst" },
   { key: "playerAnimation", label: "hippo animation" },
   { key: "music", label: "music" },
@@ -73,6 +77,7 @@ const DEFAULT_TROUBLESHOOT_OPTIONS = {
   ground: true,
   jumpSparkles: true,
   collectionEffects: true,
+  mysteryBlocks: false,
   deathPieces: true,
   playerAnimation: true,
   music: true,
@@ -117,6 +122,7 @@ let particles = [];
 let collectionEffects = [];
 let deathEffect = null;
 let deathPieces = [];
+let playerFlipMode = "none";
 let player;
 let state = "ready";
 let score = 0;
@@ -256,7 +262,8 @@ function applyLowEffectsPreset() {
     playerAnimation: false,
     music: true,
     soundEffects: false,
-    sfxLite: true
+    sfxLite: true,
+    mysteryBlocks: false
   };
   saveTroubleshootOptions();
   applyTroubleshootSideEffects("preset");
@@ -277,6 +284,15 @@ function applyTroubleshootSideEffects(key) {
   }
   if (!optionEnabled("collectionEffects")) {
     collectionEffects = [];
+  }
+  if (!optionEnabled("mysteryBlocks")) {
+    playerFlipMode = "none";
+    for (const obstacle of obstacles) {
+      if (obstacle.collectible === "mystery") {
+        obstacle.collectible = "face";
+        obstacle.flipMode = "none";
+      }
+    }
   }
   if (!optionEnabled("deathPieces")) {
     deathPieces = [];
@@ -306,24 +322,35 @@ function silenceSfx() {
 }
 
 function gameSnapshot() {
+  const includeMysteryState = troubleshootOptions.mysteryBlocks === true || playerFlipMode !== "none";
+  const playerSnapshot = {
+    x: Math.round(player.x),
+    y: Math.round(player.y),
+    scale: Number(player.scale.toFixed(3)),
+    targetScale: Number(player.targetScale.toFixed(3))
+  };
+  if (includeMysteryState) playerSnapshot.flipMode = playerFlipMode;
+
   return {
     state,
     score,
     bestScore,
     obstacles: obstacles.length,
-    obstacleState: obstacles.map((obstacle) => ({
-      x: Math.round(obstacle.x),
-      top: Math.round(obstacle.top),
-      gap: Math.round(obstacle.gap),
-      faceScale: Number(collectibleFaceScale().toFixed(3)),
-      collected: obstacle.collected
-    })),
-    player: {
-      x: Math.round(player.x),
-      y: Math.round(player.y),
-      scale: Number(player.scale.toFixed(3)),
-      targetScale: Number(player.targetScale.toFixed(3))
-    },
+    obstacleState: obstacles.map((obstacle) => {
+      const snapshot = {
+        x: Math.round(obstacle.x),
+        top: Math.round(obstacle.top),
+        gap: Math.round(obstacle.gap),
+        faceScale: Number(collectibleFaceScale().toFixed(3)),
+        collected: obstacle.collected
+      };
+      if (includeMysteryState) {
+        snapshot.collectible = obstacle.collectible === "mystery" ? "mystery" : "face";
+        snapshot.flipMode = obstacle.flipMode || "none";
+      }
+      return snapshot;
+    }),
+    player: playerSnapshot,
     death: deathEffect
       ? {
           life: Math.round(deathEffect.life),
@@ -757,6 +784,7 @@ function resetRun() {
   collectionEffects = [];
   deathEffect = null;
   deathPieces = [];
+  playerFlipMode = "none";
   score = 0;
   spawnTimer = 46;
   groundOffset = 0;
@@ -854,7 +882,7 @@ function updatePlayingStep() {
 
   for (const obstacle of obstacles) {
     obstacle.x -= speed;
-    if (!obstacle.collected && faceHalfCovered(obstacle)) {
+    if (!obstacle.collected && collectibleHalfCovered(obstacle)) {
       collectFace(obstacle);
     }
   }
@@ -985,6 +1013,7 @@ function crash() {
     y: popY,
     scale: popScale,
     rot: player.rot,
+    flipMode: playerFlipMode,
     img: hippoFrames[frameIdx],
     score,
     life: 52,
@@ -1095,9 +1124,9 @@ function optionPanelResetButton() {
 function optionRowRect(index) {
   return {
     x: OPTIONS_PANEL.x + 16,
-    y: OPTIONS_PANEL.y + 82 + index * 24,
+    y: OPTIONS_PANEL.y + 80 + index * 23,
     w: OPTIONS_PANEL.w - 32,
-    h: 22
+    h: 21
   };
 }
 
@@ -1107,11 +1136,14 @@ function spawnObstacle() {
   const marginBottom = 92;
   const firstTop = 292 - gap * 0.5;
   const top = score === 0 && obstacles.length === 0 ? firstTop : random(marginTop, GROUND_Y - marginBottom - gap);
+  const collectible = chooseCollectibleKind();
   obstacles.push({
     x: WORLD_W + 34,
     w: PIPE_W,
     top,
     gap,
+    collectible,
+    flipMode: collectible === "mystery" ? randomFlipMode() : "none",
     collected: false
   });
 }
@@ -1119,8 +1151,12 @@ function spawnObstacle() {
 function collectFace(obstacle) {
   obstacle.collected = true;
   score += 1;
+  const mystery = troubleshootOptions.mysteryBlocks === true && obstacle.collectible === "mystery";
+  if (mystery) {
+    playerFlipMode = obstacle.flipMode || randomFlipMode();
+  }
   const milestone = score % 10 === 0;
-  playSfx(milestone ? "collectMilestone" : "collect");
+  playSfx(mystery || milestone ? "collectMilestone" : "collect");
   bestScore = max(bestScore, score);
   localStorage.setItem("flappy-hippo-best", String(bestScore));
 
@@ -1134,6 +1170,8 @@ function collectFace(obstacle) {
     collectionEffects.push({
       x: faceX,
       y: faceY,
+      kind: mystery ? "mystery" : "face",
+      flipMode: playerFlipMode,
       scale: milestone ? 1.75 : 1,
       life: milestone ? 52 : 34,
       maxLife: milestone ? 52 : 34
@@ -1141,23 +1179,36 @@ function collectFace(obstacle) {
     burst(
       faceX,
       faceY,
-      milestone ? RGB.pink : RGB.mint,
-      milestone ? 26 : 12,
-      milestone ? 1.45 : 1,
-      milestone ? 1.35 : 1
+      mystery ? RGB.yellow : milestone ? RGB.pink : RGB.mint,
+      mystery || milestone ? 26 : 12,
+      mystery || milestone ? 1.45 : 1,
+      mystery || milestone ? 1.35 : 1
     );
   }
 }
 
-function faceHalfCovered(obstacle) {
+function collectibleHalfCovered(obstacle) {
   const faceX = obstacle.x + obstacle.w * 0.5;
   const faceScale = collectibleFaceScale();
-  const playerFront = player.x + (PLAYER_BASE_W - PLAYER_ANCHOR_X) * player.scale - (FACE_W * faceScale) * 0.5;
+  const width =
+    troubleshootOptions.mysteryBlocks === true && obstacle.collectible === "mystery"
+      ? MYSTERY_BLOCK_SIZE * faceScale
+      : FACE_W * faceScale;
+  const playerFront = player.x + (PLAYER_BASE_W - PLAYER_ANCHOR_X) * player.scale - width * 0.5;
   return faceX < playerFront;
 }
 
 function collectibleFaceScale() {
   return player ? max(1, player.targetScale) : 1;
+}
+
+function chooseCollectibleKind() {
+  if (troubleshootOptions.mysteryBlocks !== true || score < MYSTERY_BLOCK_MIN_SCORE) return "face";
+  return random() < MYSTERY_BLOCK_CHANCE ? "mystery" : "face";
+}
+
+function randomFlipMode() {
+  return random() < 0.5 ? "horizontal" : "vertical";
 }
 
 function hitsAnyObstacle() {
@@ -1283,7 +1334,14 @@ function drawObstacle(obstacle, topPipeY) {
   drawPipe(obstacle.x, topPipeY, obstacle.w, obstacle.top - topPipeY, true);
   drawPipe(obstacle.x, bottomY, obstacle.w, GROUND_Y - bottomY, false);
   if (!obstacle.collected) {
-    drawCollectibleFace(obstacle.x + obstacle.w * 0.5, obstacle.top + obstacle.gap * 0.5, collectibleFaceScale());
+    const x = obstacle.x + obstacle.w * 0.5;
+    const y = obstacle.top + obstacle.gap * 0.5;
+    const scale = collectibleFaceScale();
+    if (troubleshootOptions.mysteryBlocks === true && obstacle.collectible === "mystery") {
+      drawMysteryBlock(x, y, scale);
+    } else {
+      drawCollectibleFace(x, y, scale);
+    }
   }
 }
 
@@ -1324,6 +1382,31 @@ function drawPipeLip(x, y, w, h) {
 function drawCollectibleFace(x, y, faceScale = 1) {
   imageMode(CENTER);
   image(faceImg, x, y, FACE_W * faceScale, FACE_H * faceScale);
+}
+
+function drawMysteryBlock(x, y, blockScale = 1, alpha = 255) {
+  const size = MYSTERY_BLOCK_SIZE;
+  push();
+  translate(x, y);
+  scale(blockScale);
+  rectMode(CENTER);
+  noStroke();
+  fill(0, alpha);
+  rect(3, 4, size, size);
+  fill(189, 101, 30, alpha);
+  rect(0, 0, size, size);
+  fill(255, 183, 46, alpha);
+  rect(-2, -4, size - 7, size - 7);
+  fill(255, 226, 89, alpha);
+  rect(-11, -14, 12, 5);
+  fill(120, 67, 31, alpha);
+  rect(-15, -15, 4, 4);
+  rect(15, -15, 4, 4);
+  rect(-15, 15, 4, 4);
+  rect(15, 15, 4, 4);
+  drawPixelGlyph(QUESTION_GLYPH, -7.5, -12, 3, color(0, alpha));
+  drawPixelGlyph(QUESTION_GLYPH, -9.5, -14, 3, color(255, 246, 122, alpha));
+  pop();
 }
 
 function buildFaceOutlineImage(radius) {
@@ -1382,6 +1465,11 @@ function drawHippo() {
   push();
   translate(player.x, player.y);
   rotate(player.rot);
+  if (playerFlipMode === "horizontal") {
+    scale(-1, 1);
+  } else if (playerFlipMode === "vertical") {
+    scale(1, -1);
+  }
   imageMode(CORNER);
   image(img, -anchorX, -anchorY, w, h);
   pop();
@@ -1405,6 +1493,11 @@ function drawDeathEffect() {
     push();
     translate(deathEffect.x, deathEffect.y + PLAYER_BASE_H * popScale * 0.17 * p);
     rotate(lerp(deathEffect.rot, -0.06, p));
+    if (deathEffect.flipMode === "horizontal") {
+      scale(-1, 1);
+    } else if (deathEffect.flipMode === "vertical") {
+      scale(1, -1);
+    }
     imageMode(CORNER);
     image(deathEffect.img, -anchorX, -anchorY, w, h);
     pop();
@@ -1834,7 +1927,7 @@ function drawCollectionEffects() {
   const step = frameStepScale();
   let write = 0;
   for (const effect of collectionEffects) {
-    drawPickupHeart(effect);
+    drawPickupEffect(effect);
     effect.life -= step;
     if (effect.life > 0) {
       collectionEffects[write] = effect;
@@ -1842,6 +1935,60 @@ function drawCollectionEffects() {
     }
   }
   collectionEffects.length = write;
+}
+
+function drawPickupEffect(effect) {
+  if (effect.kind === "mystery") {
+    drawMysteryPickup(effect);
+    return;
+  }
+  drawPickupHeart(effect);
+}
+
+function drawMysteryPickup(effect) {
+  const t = 1 - effect.life / effect.maxLife;
+  const eased = easeOutCubic(t);
+  const alpha = map(effect.life, 0, effect.maxLife, 0, 255);
+  const lift = 10 + eased * 40;
+  const wobble = sin((1 - effect.life / 5) * PI) * 4;
+  const effectScale = min(1.3, effect.scale || 1);
+
+  push();
+  translate(effect.x + wobble, effect.y - lift);
+  scale(effectScale * lerp(0.58, 0.9, sin(t * PI)));
+  drawMysteryBlock(0, 0, 1, alpha);
+  drawFlipMarker(effect.flipMode, alpha);
+  pop();
+}
+
+function drawFlipMarker(mode, alpha) {
+  noStroke();
+  fill(0, alpha * 0.68);
+  rectMode(CENTER);
+  if (mode === "vertical") {
+    rect(0, -34, 4, 13);
+    rect(0, 34, 4, 13);
+    rect(-4, -29, 12, 4);
+    rect(4, 29, 12, 4);
+  } else {
+    rect(-34, 0, 13, 4);
+    rect(34, 0, 13, 4);
+    rect(-29, -4, 4, 12);
+    rect(29, 4, 4, 12);
+  }
+  fill(255, 246, 122, alpha);
+  if (mode === "vertical") {
+    rect(0, -36, 4, 13);
+    rect(0, 32, 4, 13);
+    rect(-4, -31, 12, 4);
+    rect(4, 27, 12, 4);
+  } else {
+    rect(-36, 0, 13, 4);
+    rect(32, 0, 13, 4);
+    rect(-31, -4, 4, 12);
+    rect(27, 4, 4, 12);
+  }
+  rectMode(CORNER);
 }
 
 function drawPickupHeart(effect) {
@@ -1877,6 +2024,7 @@ function pickupColor(t, alpha) {
 
 const PLUS_GLYPH = ["00100", "00100", "11111", "00100", "00100"];
 const HEART_GLYPH = ["0110110", "1111111", "1111111", "0111110", "0011100", "0001000"];
+const QUESTION_GLYPH = ["11110", "00010", "00100", "01000", "01000", "00000", "01000"];
 
 function drawPixelGlyph(glyph, x, y, unit, fillColor) {
   fill(fillColor);
