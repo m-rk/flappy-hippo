@@ -1209,15 +1209,23 @@ function chooseCollectibleKind() {
 }
 
 function nextFlipMode(currentMode) {
-  const choices =
-    currentMode === "horizontal"
-      ? ["vertical", "both"]
-      : currentMode === "vertical"
-        ? ["horizontal", "both"]
-        : currentMode === "both"
-          ? ["horizontal", "vertical"]
-          : ["horizontal", "vertical"];
-  return choices[floor(random(choices.length))];
+  const currentMask = flipModeMask(currentMode);
+  const toggleMask = floor(random(3)) + 1;
+  return flipModeFromMask(currentMask ^ toggleMask);
+}
+
+function flipModeMask(mode) {
+  if (mode === "horizontal") return 1;
+  if (mode === "vertical") return 2;
+  if (mode === "both") return 3;
+  return 0;
+}
+
+function flipModeFromMask(mask) {
+  if (mask === 1) return "horizontal";
+  if (mask === 2) return "vertical";
+  if (mask === 3) return "both";
+  return "none";
 }
 
 function hitsAnyObstacle() {
@@ -1972,7 +1980,8 @@ function drawMysteryPickup(effect) {
 
 function drawFlipMarker(mode, alpha) {
   const showVertical = mode === "vertical" || mode === "both";
-  const showHorizontal = mode === "horizontal" || mode === "both" || !showVertical;
+  const showHorizontal = mode === "horizontal" || mode === "both";
+  const showReset = mode === "none";
   noStroke();
   fill(0, alpha * 0.68);
   rectMode(CENTER);
@@ -1988,6 +1997,12 @@ function drawFlipMarker(mode, alpha) {
     rect(-29, -4, 4, 12);
     rect(29, 4, 4, 12);
   }
+  if (showReset) {
+    rect(0, -34, 28, 4);
+    rect(0, 34, 28, 4);
+    rect(-34, 0, 4, 28);
+    rect(34, 0, 4, 28);
+  }
   fill(255, 246, 122, alpha);
   if (showVertical) {
     rect(0, -36, 4, 13);
@@ -2000,6 +2015,12 @@ function drawFlipMarker(mode, alpha) {
     rect(32, 0, 13, 4);
     rect(-31, -4, 4, 12);
     rect(27, 4, 4, 12);
+  }
+  if (showReset) {
+    rect(0, -36, 28, 4);
+    rect(0, 32, 28, 4);
+    rect(-36, 0, 4, 28);
+    rect(32, 0, 4, 28);
   }
   rectMode(CORNER);
 }
