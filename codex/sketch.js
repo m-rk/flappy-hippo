@@ -1143,7 +1143,7 @@ function spawnObstacle() {
     top,
     gap,
     collectible,
-    flipMode: collectible === "mystery" ? randomFlipMode() : "none",
+    flipMode: "none",
     collected: false
   });
 }
@@ -1153,7 +1153,8 @@ function collectFace(obstacle) {
   score += 1;
   const mystery = troubleshootOptions.mysteryBlocks === true && obstacle.collectible === "mystery";
   if (mystery) {
-    playerFlipMode = obstacle.flipMode || randomFlipMode();
+    playerFlipMode = nextFlipMode(playerFlipMode);
+    obstacle.flipMode = playerFlipMode;
   }
   const milestone = score % 10 === 0;
   playSfx(mystery || milestone ? "collectMilestone" : "collect");
@@ -1207,8 +1208,16 @@ function chooseCollectibleKind() {
   return random() < MYSTERY_BLOCK_CHANCE ? "mystery" : "face";
 }
 
-function randomFlipMode() {
-  return random() < 0.5 ? "horizontal" : "vertical";
+function nextFlipMode(currentMode) {
+  const choices =
+    currentMode === "horizontal"
+      ? ["vertical", "both"]
+      : currentMode === "vertical"
+        ? ["horizontal", "both"]
+        : currentMode === "both"
+          ? ["horizontal", "vertical"]
+          : ["horizontal", "vertical"];
+  return choices[floor(random(choices.length))];
 }
 
 function hitsAnyObstacle() {
@@ -1465,10 +1474,10 @@ function drawHippo() {
   push();
   translate(player.x, player.y);
   rotate(player.rot);
-  if (playerFlipMode === "horizontal") {
-    scale(-1, 1);
-  } else if (playerFlipMode === "vertical") {
-    scale(1, -1);
+  if (playerFlipMode !== "none") {
+    const flipX = playerFlipMode === "horizontal" || playerFlipMode === "both";
+    const flipY = playerFlipMode === "vertical" || playerFlipMode === "both";
+    scale(flipX ? -1 : 1, flipY ? -1 : 1);
   }
   imageMode(CORNER);
   image(img, -anchorX, -anchorY, w, h);
@@ -1493,10 +1502,10 @@ function drawDeathEffect() {
     push();
     translate(deathEffect.x, deathEffect.y + PLAYER_BASE_H * popScale * 0.17 * p);
     rotate(lerp(deathEffect.rot, -0.06, p));
-    if (deathEffect.flipMode === "horizontal") {
-      scale(-1, 1);
-    } else if (deathEffect.flipMode === "vertical") {
-      scale(1, -1);
+    if (deathEffect.flipMode && deathEffect.flipMode !== "none") {
+      const flipX = deathEffect.flipMode === "horizontal" || deathEffect.flipMode === "both";
+      const flipY = deathEffect.flipMode === "vertical" || deathEffect.flipMode === "both";
+      scale(flipX ? -1 : 1, flipY ? -1 : 1);
     }
     imageMode(CORNER);
     image(deathEffect.img, -anchorX, -anchorY, w, h);
@@ -1962,27 +1971,31 @@ function drawMysteryPickup(effect) {
 }
 
 function drawFlipMarker(mode, alpha) {
+  const showVertical = mode === "vertical" || mode === "both";
+  const showHorizontal = mode === "horizontal" || mode === "both" || !showVertical;
   noStroke();
   fill(0, alpha * 0.68);
   rectMode(CENTER);
-  if (mode === "vertical") {
+  if (showVertical) {
     rect(0, -34, 4, 13);
     rect(0, 34, 4, 13);
     rect(-4, -29, 12, 4);
     rect(4, 29, 12, 4);
-  } else {
+  }
+  if (showHorizontal) {
     rect(-34, 0, 13, 4);
     rect(34, 0, 13, 4);
     rect(-29, -4, 4, 12);
     rect(29, 4, 4, 12);
   }
   fill(255, 246, 122, alpha);
-  if (mode === "vertical") {
+  if (showVertical) {
     rect(0, -36, 4, 13);
     rect(0, 32, 4, 13);
     rect(-4, -31, 12, 4);
     rect(4, 27, 12, 4);
-  } else {
+  }
+  if (showHorizontal) {
     rect(-36, 0, 13, 4);
     rect(32, 0, 13, 4);
     rect(-31, -4, 4, 12);
