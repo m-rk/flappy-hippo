@@ -1,10 +1,10 @@
-# Flappy Hippo `/codex/` Performance Notes
+# Flappy Hippo Codex Build Performance Notes
 
 ## Scope
 
-This pass targets only the tuned `/codex/` build. The root `/` game is intentionally unchanged.
+This pass targets only the tuned Codex build, now served as the default root `/` game.
 
-The `/codex/` visual identity, game rules, controls, sounds, collection/growth effects, milestone effects, death burst, and public gameplay are preserved. New game hooks are perf-only and exposed only behind `?perf=1`.
+The Codex visual identity, game rules, controls, sounds, collection/growth effects, milestone effects, death burst, and public gameplay are preserved. New game hooks are perf-only and exposed only behind `?perf=1`.
 
 ## Browser Strategy
 

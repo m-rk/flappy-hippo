@@ -1,3 +1,12 @@
+const SCRIPT_BASE_URL =
+  typeof document !== "undefined" && document.currentScript
+    ? new URL(".", document.currentScript.src)
+    : null;
+
+function assetUrl(path) {
+  return SCRIPT_BASE_URL ? new URL(path, SCRIPT_BASE_URL).toString() : path;
+}
+
 // Global variables
 let hippoHangImg, hippoBounceImg, hippoBounceBlinkImg, hippoJumpImg, hippoJumpBlinkImg, hippoFallImg; 
 let bgImg, pipeBodyImg, pipeLipImg, pipeLipBottomImg, groundImg;
@@ -18,18 +27,18 @@ let isBlinking = false;
 
 // Load all images before the game starts
 function preload() {
-  hippoHangImg = loadImage('moodeng-hang.png');
-  hippoBounceImg = loadImage('moodeng-bounce.png');
-  hippoBounceBlinkImg = loadImage('moodeng-bounce-blink.png');
-  hippoJumpImg = loadImage('moodeng-jump.png');
-  hippoJumpBlinkImg = loadImage('moodeng-jump-blink.png');
-  hippoFallImg = loadImage('moodeng-fall.png');
-  bgImg = loadImage('sky.png');            // Background sky image
-  pipeBodyImg = loadImage('pipe_body.png');
-  pipeLipTopImg = loadImage('pipe_lip_top.png');
-  pipeLipBottomImg = loadImage('pipe_lip_bottom.png');
-  groundImg = loadImage('ground.png');     // Ground image (tileable horizontally)
-  backgroundMusic = loadSound('mario-fart.mp3');
+  hippoHangImg = loadImage(assetUrl('moodeng-hang.png'));
+  hippoBounceImg = loadImage(assetUrl('moodeng-bounce.png'));
+  hippoBounceBlinkImg = loadImage(assetUrl('moodeng-bounce-blink.png'));
+  hippoJumpImg = loadImage(assetUrl('moodeng-jump.png'));
+  hippoJumpBlinkImg = loadImage(assetUrl('moodeng-jump-blink.png'));
+  hippoFallImg = loadImage(assetUrl('moodeng-fall.png'));
+  bgImg = loadImage(assetUrl('sky.png'));            // Background sky image
+  pipeBodyImg = loadImage(assetUrl('pipe_body.png'));
+  pipeLipTopImg = loadImage(assetUrl('pipe_lip_top.png'));
+  pipeLipBottomImg = loadImage(assetUrl('pipe_lip_bottom.png'));
+  groundImg = loadImage(assetUrl('ground.png'));     // Ground image (tileable horizontally)
+  backgroundMusic = loadSound(assetUrl('mario-fart.mp3'));
 }
 
 // Initialize the game

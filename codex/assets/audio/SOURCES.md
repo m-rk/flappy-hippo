@@ -2,7 +2,7 @@
 
 ## Existing music
 
-- `mario-fart.mp3` was copied from the existing project root into `/codex/assets/audio/` so the `/codex` route owns its runtime assets. Its original license was not changed or re-verified by this update.
+- `mario-fart.mp3` was copied from the existing project root into `/codex/assets/audio/` so the Codex build owns its runtime assets. Its original license was not changed or re-verified by this update.
 
 ## Candidate effects
 

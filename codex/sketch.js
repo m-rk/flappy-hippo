@@ -1,3 +1,12 @@
+const SCRIPT_BASE_URL =
+  typeof document !== "undefined" && document.currentScript
+    ? new URL(".", document.currentScript.src)
+    : null;
+
+function assetUrl(path) {
+  return SCRIPT_BASE_URL ? new URL(path, SCRIPT_BASE_URL).toString() : path;
+}
+
 const WORLD_W = 390;
 const WORLD_H = 640;
 const GROUND_H = 86;
@@ -33,14 +42,14 @@ const BASE_SPEED = 2.08;
 const PIPE_W = 62;
 const PIPE_LIP_H = 30;
 const READY_PLAYER_Y = 318;
-const MUSIC_SRC = "assets/audio/mario-fart.mp3";
+const MUSIC_SRC = assetUrl("assets/audio/mario-fart.mp3");
 const MUSIC_VOLUME = 0.32;
 const SOUND_EFFECTS = {
-  jump: { src: "assets/audio/candidates/jump-drop-001.wav", volume: 0.68 },
-  collect: { src: "assets/audio/candidates/collect-select-006.wav", volume: 0.58 },
-  collectMilestone: { src: "assets/audio/candidates/collect-confirmation-002.wav", volume: 0.66 },
-  crash: { src: "assets/audio/candidates/crash-gameover-greyfrog.mp3", volume: 0.8 },
-  start: { src: "assets/audio/candidates/ui-start-toggle-001.wav", volume: 0.56 }
+  jump: { src: assetUrl("assets/audio/candidates/jump-drop-001.wav"), volume: 0.68 },
+  collect: { src: assetUrl("assets/audio/candidates/collect-select-006.wav"), volume: 0.58 },
+  collectMilestone: { src: assetUrl("assets/audio/candidates/collect-confirmation-002.wav"), volume: 0.66 },
+  crash: { src: assetUrl("assets/audio/candidates/crash-gameover-greyfrog.mp3"), volume: 0.8 },
+  start: { src: assetUrl("assets/audio/candidates/ui-start-toggle-001.wav"), volume: 0.56 }
 };
 const SFX_POOL_SIZE = { jump: 3, collect: 2, collectMilestone: 2, crash: 2, start: 2 };
 const SFX_LITE_INTERVALS = { jump: 140, collect: 90, collectMilestone: 0, crash: 0, start: 0 };
@@ -149,9 +158,9 @@ let pendingStartToken = 0;
 function preload() {
   for (let i = 1; i <= FRAME_COUNT; i += 1) {
     const id = String(i).padStart(3, "0");
-    hippoFrames.push(loadImage(`assets/hippo/player/hippo-${id}.png`));
+    hippoFrames.push(loadImage(assetUrl(`assets/hippo/player/hippo-${id}.png`)));
   }
-  faceImg = loadImage("assets/hippo/face.png");
+  faceImg = loadImage(assetUrl("assets/hippo/face.png"));
 }
 
 function setup() {

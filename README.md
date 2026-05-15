@@ -8,6 +8,12 @@ Found here:
 
 <blockquote class="twitter-tweet"><p lang="en" dir="ltr">Moodeng 🦛 <a href="https://t.co/Hs0Hs5Iqxe">pic.twitter.com/Hs0Hs5Iqxe</a></p>&mdash; Pixel Art Fighter (@pixelartfighter) <a href="https://twitter.com/pixelartfighter/status/1841134767800291513?ref_src=twsrc%5Etfw">March 29, 2024</a></blockquote>
 
+## Builds
+
+- `/` serves the Codex build.
+- `/grok-3/` serves the original Grok 3 build.
+- `/codex/` redirects to `/`.
+
 ## Code
 
 Copied the method from this X post:

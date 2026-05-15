@@ -1,45 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <title>Flappy Hippo!</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/p5.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/addons/p5.sound.min.js"></script>
-    <link rel="stylesheet" type="text/css" href="style.css">
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#7bc5cd" />
     <meta
       name="description"
-      content="Play the original Flappy Hippo build with classic pixel-art arcade scenery."
+      content="Play the Codex Flappy Hippo build with a constrained play area, collectible faces, growth, and custom sounds."
     />
     <link rel="canonical" href="https://m-rk.github.io/flappy-hippo/" />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://m-rk.github.io/flappy-hippo/" />
-    <meta property="og:title" content="Flappy Hippo - Original Build" />
+    <meta property="og:title" content="Flappy Hippo - Codex Build" />
     <meta
       property="og:description"
-      content="The original Flappy Hippo build: classic pixel-art arcade play with a hippo flap, clouds, ground, and green pipes."
+      content="The Codex Flappy Hippo build: constrained play area, growing hippo, collectible faces, milestone effects, and custom sounds."
     />
-    <meta property="og:image" content="https://m-rk.github.io/flappy-hippo/og-original.png" />
-    <meta property="og:image:secure_url" content="https://m-rk.github.io/flappy-hippo/og-original.png" />
+    <meta property="og:image" content="https://m-rk.github.io/flappy-hippo/codex/og-codex.png" />
+    <meta property="og:image:secure_url" content="https://m-rk.github.io/flappy-hippo/codex/og-codex.png" />
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta
       property="og:image:alt"
-      content="Flappy Hippo original gameplay preview with the classic pixel hippo, clouds, green pipes, and ground."
+      content="Flappy Hippo Codex version preview with a narrower play area, pixel hippo, title screen, clouds, and ground."
     />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Flappy Hippo - Original Build" />
+    <meta name="twitter:title" content="Flappy Hippo - Codex Build" />
     <meta
       name="twitter:description"
-      content="The original Flappy Hippo build with classic pixel-art arcade scenery."
+      content="A Codex Flappy Hippo build with constrained play area, growth, collectibles, and sounds."
     />
-    <meta name="twitter:image" content="https://m-rk.github.io/flappy-hippo/og-original.png" />
+    <meta name="twitter:image" content="https://m-rk.github.io/flappy-hippo/codex/og-codex.png" />
+    <title>Flappy Hippo - Codex Build</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="codex/style.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/p5.min.js"></script>
   </head>
   <body>
-    <main>
-    </main>
-    <script src="sketch.js"></script>
+    <main id="game-root" aria-label="Flappy Hippo game"></main>
+    <script src="codex/sketch.js"></script>
 
-    <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "0d4b2e3e1348456ba51a150aadcddb29"}'></script><!-- End Cloudflare Web Analytics -->
+    <script>
+      if (location.hostname === "m-rk.github.io") {
+        const analytics = document.createElement("script");
+        analytics.defer = true;
+        analytics.src = "https://static.cloudflareinsights.com/beacon.min.js";
+        analytics.dataset.cfBeacon = '{"token": "0d4b2e3e1348456ba51a150aadcddb29"}';
+        document.body.appendChild(analytics);
+      }
+    </script>
   </body>
 </html>
