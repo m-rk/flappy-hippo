@@ -19,4 +19,3 @@ Copied the method from this X post:
 - `/` serves the GPT 5.5 build.
 - `/grok-3/` serves the original Grok 3 build.
 - `/gpt5-5/` redirects to `/`.
-- `/codex/` redirects to `/`.
