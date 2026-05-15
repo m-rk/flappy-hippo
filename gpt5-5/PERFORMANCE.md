@@ -1,10 +1,10 @@
-# Flappy Hippo Codex Build Performance Notes
+# Flappy Hippo GPT 5.5 Build Performance Notes
 
 ## Scope
 
-This pass targets only the tuned Codex build, now served as the default root `/` game.
+This pass targets only the tuned GPT 5.5 build, now served as the default root `/` game.
 
-The Codex visual identity, game rules, controls, sounds, collection/growth effects, milestone effects, death burst, and public gameplay are preserved. New game hooks are perf-only and exposed only behind `?perf=1`.
+The GPT 5.5 visual identity, game rules, controls, sounds, collection/growth effects, milestone effects, death burst, and public gameplay are preserved. New game hooks are perf-only and exposed only behind `?perf=1`.
 
 ## Browser Strategy
 
@@ -14,22 +14,22 @@ If headed mobile evidence is needed later, use one explicitly approved persisten
 
 ## Changes
 
-- `codex/perf-smoke.mjs` supports `--scenario collection-stress`.
+- `gpt5-5/perf-smoke.mjs` supports `--scenario collection-stress`.
 - `collection-stress` uses mobile/touch emulation, actual Playwright `touchscreen.tap()` input events, DPR/CPU options, real obstacle placement, and active pipe/ground collision risk.
 - The stress run captures non-collection baseline pacing, pre-pickup, pickup, recovery, natural death, near-death frames, input-to-next-frame latency, score/state/scale, effects, death pieces/faces, viewport, DPR, browser mode, CPU throttle, and console/page errors.
 - `--summary` prints compact JSON for repeated runs; the default output still includes inspectable trace windows.
-- `codex/sketch.js` adds perf-only clearance snapshots and a perf-only real obstacle placer. It does not change public gameplay.
+- `gpt5-5/sketch.js` adds perf-only clearance snapshots and a perf-only real obstacle placer. It does not change public gameplay.
 
 ## Validation Commands
 
 ```bash
-node --check codex/sketch.js
-node --check codex/perf-smoke.mjs
-node codex/perf-smoke.mjs --runs 5 --summary
-node codex/perf-smoke.mjs --scenario collection-stress --profile mobile --runs 3 --traceWindowLimit 1 --summary
-node codex/perf-smoke.mjs --scenario collection-stress --profile mobile --runs 2 --cpu 4 --traceWindowLimit 1 --summary
-node codex/perf-smoke.mjs --scenario collection-stress --profile mobile --runs 2 --cpu 8 --traceWindowLimit 1 --summary
-node codex/perf-smoke.mjs --scenario collection-stress --profile mobile --runs 2 --deviceScaleFactor 4 --traceWindowLimit 1 --summary
+node --check gpt5-5/sketch.js
+node --check gpt5-5/perf-smoke.mjs
+node gpt5-5/perf-smoke.mjs --runs 5 --summary
+node gpt5-5/perf-smoke.mjs --scenario collection-stress --profile mobile --runs 3 --traceWindowLimit 1 --summary
+node gpt5-5/perf-smoke.mjs --scenario collection-stress --profile mobile --runs 2 --cpu 4 --traceWindowLimit 1 --summary
+node gpt5-5/perf-smoke.mjs --scenario collection-stress --profile mobile --runs 2 --cpu 8 --traceWindowLimit 1 --summary
+node gpt5-5/perf-smoke.mjs --scenario collection-stress --profile mobile --runs 2 --deviceScaleFactor 4 --traceWindowLimit 1 --summary
 ```
 
 All commands passed with no console or page errors.
@@ -39,7 +39,7 @@ All commands passed with no console or page errors.
 Command:
 
 ```bash
-node codex/perf-smoke.mjs --runs 5 --summary
+node gpt5-5/perf-smoke.mjs --runs 5 --summary
 ```
 
 Environment: headless Chromium, `390x844`, DPR `3`, touch/mobile emulation, `pointerCoarse: true`, 6x CPU throttle, p5 pixel density `1`, 30fps game target.
@@ -61,7 +61,7 @@ Result: the old gate passed and did not reproduce a >50ms collection-window stal
 Command:
 
 ```bash
-node codex/perf-smoke.mjs --scenario collection-stress --profile mobile --runs 3 --traceWindowLimit 1 --summary
+node gpt5-5/perf-smoke.mjs --scenario collection-stress --profile mobile --runs 3 --traceWindowLimit 1 --summary
 ```
 
 Environment: headless Chromium, `390x844`, DPR `3`, touch/mobile emulation, `pointerCoarse: true`, 6x CPU throttle, p5 pixel density `1`, 30fps game target.
@@ -100,7 +100,7 @@ Interpretation: the mobile stutter was reproduced intermittently. The strongest 
 
 The reproduced stalls line up with the collection window, not raw touch delivery. Input-to-next-frame latency stayed below `50ms` in reproduced runs, while collection-window frame time exceeded the non-collection baseline by `+51.6ms` at 6x CPU and `+23.5ms` at 4x CPU.
 
-The next fix pass should inspect collection/growth rendering and side effects in `codex/sketch.js`: `collectFace()`, `burst()`, `drawCollectionEffects()`, growth-scaled sprite/face drawing, SFX start behavior, and `localStorage.setItem()` during collection.
+The next fix pass should inspect collection/growth rendering and side effects in `gpt5-5/sketch.js`: `collectFace()`, `burst()`, `drawCollectionEffects()`, growth-scaled sprite/face drawing, SFX start behavior, and `localStorage.setItem()` during collection.
 
 ## Remaining Risk
 
