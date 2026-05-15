@@ -27,18 +27,18 @@ let isBlinking = false;
 
 // Load all images before the game starts
 function preload() {
-  hippoHangImg = loadImage(assetUrl('moodeng-hang.png'));
-  hippoBounceImg = loadImage(assetUrl('moodeng-bounce.png'));
-  hippoBounceBlinkImg = loadImage(assetUrl('moodeng-bounce-blink.png'));
-  hippoJumpImg = loadImage(assetUrl('moodeng-jump.png'));
-  hippoJumpBlinkImg = loadImage(assetUrl('moodeng-jump-blink.png'));
-  hippoFallImg = loadImage(assetUrl('moodeng-fall.png'));
-  bgImg = loadImage(assetUrl('sky.png'));            // Background sky image
-  pipeBodyImg = loadImage(assetUrl('pipe_body.png'));
-  pipeLipTopImg = loadImage(assetUrl('pipe_lip_top.png'));
-  pipeLipBottomImg = loadImage(assetUrl('pipe_lip_bottom.png'));
-  groundImg = loadImage(assetUrl('ground.png'));     // Ground image (tileable horizontally)
-  backgroundMusic = loadSound(assetUrl('mario-fart.mp3'));
+  hippoHangImg = loadImage(assetUrl('assets/moodeng-hang.png'));
+  hippoBounceImg = loadImage(assetUrl('assets/moodeng-bounce.png'));
+  hippoBounceBlinkImg = loadImage(assetUrl('assets/moodeng-bounce-blink.png'));
+  hippoJumpImg = loadImage(assetUrl('assets/moodeng-jump.png'));
+  hippoJumpBlinkImg = loadImage(assetUrl('assets/moodeng-jump-blink.png'));
+  hippoFallImg = loadImage(assetUrl('assets/moodeng-fall.png'));
+  bgImg = loadImage(assetUrl('assets/sky.png'));            // Background sky image
+  pipeBodyImg = loadImage(assetUrl('assets/pipe_body.png'));
+  pipeLipTopImg = loadImage(assetUrl('assets/pipe_lip_top.png'));
+  pipeLipBottomImg = loadImage(assetUrl('assets/pipe_lip_bottom.png'));
+  groundImg = loadImage(assetUrl('assets/ground.png'));     // Ground image (tileable horizontally)
+  backgroundMusic = loadSound(assetUrl('assets/mario-fart.mp3'));
 }
 
 // Initialize the game
