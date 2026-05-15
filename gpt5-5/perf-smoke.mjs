@@ -158,7 +158,7 @@ async function runPerfScenario(browser, port, run) {
     cpuThrottleError = error.message;
   }
 
-  await page.goto(`http://127.0.0.1:${port}/codex/index.html?perf=1`, {
+  await page.goto(`http://127.0.0.1:${port}/?perf=1`, {
     waitUntil: "networkidle",
     timeout: 20000
   });
@@ -271,7 +271,7 @@ async function runCollectionStressScenario(browser, port, run) {
     cpuThrottleError = error.message;
   }
 
-  await page.goto(`http://127.0.0.1:${port}/codex/index.html?perf=1`, {
+  await page.goto(`http://127.0.0.1:${port}/?perf=1`, {
     waitUntil: "networkidle",
     timeout: 20000
   });
@@ -456,7 +456,7 @@ async function runPublicStartScenario(browser, port, run) {
   });
   page.on("pageerror", (error) => pageErrors.push(error.message));
 
-  await page.goto(`http://127.0.0.1:${port}/codex/index.html`, {
+  await page.goto(`http://127.0.0.1:${port}/`, {
     waitUntil: "networkidle",
     timeout: 20000
   });
